@@ -101,13 +101,18 @@ class ProfileDatabase {
 // Initialize database
 const db = new ProfileDatabase();
 
-// Test database initialization
+// Test database initialization and make it visible in DevTools
 (async () => {
   try {
     await db.ensureReady();
-    console.log("IndexedDB initialized successfully");
+    console.log("IndexedDB 'linkedin_profiles' initialized successfully");
     const count = await db.getCount();
     console.log(`Current profile count in DB: ${count}`);
+    
+    // Force database visibility by performing a small operation
+    const testTransaction = db.db.transaction([STORE_NAME], "readonly");
+    const testStore = testTransaction.objectStore(STORE_NAME);
+    console.log("Database stores:", Array.from(db.db.objectStoreNames));
   } catch (error) {
     console.error("Failed to initialize IndexedDB:", error);
   }
@@ -212,7 +217,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (
     changeInfo.status === "complete" &&
-    tab.url?.includes("linkedin.com/search/results/people")
+    (tab.url?.includes("linkedin.com/search/results/people/?") ||
+    tab.url?.includes("linkedin.com/search/results/people?")) // Handle both formats
   ) {
     // Page loaded, content script will handle detection
   }
