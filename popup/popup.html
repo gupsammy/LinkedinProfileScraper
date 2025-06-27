@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LinkedIn Profile Scraper</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <h1>LinkedIn Profile Scraper</h1>
+        <div class="status-badge" id="statusBadge">Ready</div>
+      </header>
+
+      <div class="stats">
+        <div class="stat-item">
+          <span class="stat-label">Profiles Stored:</span>
+          <span class="stat-value" id="profileCount">0</span>
+        </div>
+      </div>
+
+      <div class="actions">
+        <div class="action-group">
+          <button id="btnStart" class="btn btn-primary">
+            <span class="btn-icon">▶</span>
+            Start Scraping
+          </button>
+          <button id="btnStop" class="btn btn-secondary" disabled>
+            <span class="btn-icon">⏸</span>
+            Stop Scraping
+          </button>
+        </div>
+
+        <div class="action-group">
+          <button id="btnExport" class="btn btn-outline">
+            <span class="btn-icon">📥</span>
+            Export JSON
+          </button>
+          <button id="btnImport" class="btn btn-outline">
+            <span class="btn-icon">📤</span>
+            Import JSON
+          </button>
+        </div>
+
+        <div class="action-group">
+          <button id="btnClear" class="btn btn-danger">
+            <span class="btn-icon">🗑</span>
+            Clear Database
+          </button>
+        </div>
+      </div>
+
+      <div class="progress" id="progressSection" style="display: none">
+        <div class="progress-info">
+          <span id="progressText">Scraping in progress...</span>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill" id="progressFill"></div>
+        </div>
+      </div>
+
+      <div class="status-message" id="statusMessage"></div>
+
+      <!-- Hidden file input for import -->
+      <input
+        type="file"
+        id="importFile"
+        accept="application/json"
+        style="display: none"
+      />
+    </div>
+
+    <script src="popup.js"></script>
+  </body>
+</html>
