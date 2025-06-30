@@ -108,7 +108,7 @@ const db = new ProfileDatabase();
     console.log("IndexedDB 'linkedin_profiles' initialized successfully");
     const count = await db.getCount();
     console.log(`Current profile count in DB: ${count}`);
-    
+
     // Force database visibility by performing a small operation
     const testTransaction = db.db.transaction([STORE_NAME], "readonly");
     const testStore = testTransaction.objectStore(STORE_NAME);
@@ -128,7 +128,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           console.log("Sample profile data:", msg.data[0]);
           const count = await db.putMany(msg.data);
           const totalCount = await db.getCount();
-          console.log(`Successfully saved ${count} profiles. Total in DB: ${totalCount}`);
+          console.log(
+            `Successfully saved ${count} profiles. Total in DB: ${totalCount}`
+          );
           sendResponse({ success: true, saved: count, total: totalCount });
 
           // Notify popup of progress if it's open
@@ -176,15 +178,21 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           break;
 
         case "STOP_SCRAPING":
-          // Forward to active tab
-          const activeTabs = await chrome.tabs.query({
-            active: true,
-            currentWindow: true,
+          // Broadcast STOP_SCRAPING to all LinkedIn tabs so it is received even if the page is mid-navigation
+          const linkedInTabs = await chrome.tabs.query({
+            url: "*://*.linkedin.com/*",
           });
-          if (activeTabs[0]) {
-            chrome.tabs.sendMessage(activeTabs[0].id, { type: "STOP_SCRAPING" });
+
+          // Send the stop message to each tab that might have an active scraper
+          for (const tabInfo of linkedInTabs) {
+            try {
+              chrome.tabs.sendMessage(tabInfo.id, { type: "STOP_SCRAPING" });
+            } catch (e) {
+              // Tab might not have the content script injected yet – ignore
+            }
           }
-          sendResponse({ success: true });
+
+          sendResponse({ success: true, tabsNotified: linkedInTabs.length });
           break;
 
         case "SCRAPE_DONE":
@@ -218,7 +226,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (
     changeInfo.status === "complete" &&
     (tab.url?.includes("linkedin.com/search/results/people/?") ||
-    tab.url?.includes("linkedin.com/search/results/people?")) // Handle both formats
+      tab.url?.includes("linkedin.com/search/results/people?")) // Handle both formats
   ) {
     // Page loaded, content script will handle detection
   }
