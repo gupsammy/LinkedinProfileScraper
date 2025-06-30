@@ -120,6 +120,26 @@ function hasNextPage() {
   }
 }
 
+// Scroll to bottom to trigger lazy-loading and activate pagination (mainly for first page)
+async function ensureNextButtonReady(maxTries = 10) {
+  for (let i = 0; i < maxTries; i++) {
+    if (hasNextPage()) {
+      console.log(`Next button became ready after ${i} scroll attempts`);
+      return true;
+    }
+    console.log(`Scroll attempt ${i + 1} to activate pagination...`);
+    window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
+    await sleep(800);
+  }
+  const finalCheck = hasNextPage();
+  console.log(
+    `Final pagination check after scrolling: ${
+      finalCheck ? "ready" : "not ready"
+    }`
+  );
+  return finalCheck;
+}
+
 // Get current page number from URL or pagination
 function getCurrentPage() {
   try {
@@ -558,6 +578,9 @@ async function startScraping() {
       await saveProfiles(profiles);
     }
 
+    // Ensure paginator is active before deciding to stop (mainly for first page)
+    await ensureNextButtonReady();
+
     // Navigate to next page if available
     if (currentPage < totalPages || hasNextPage()) {
       await navigateToNextPage();
@@ -625,6 +648,9 @@ function checkContinueScraping() {
         } else {
           await saveProfiles(profiles);
         }
+
+        // Ensure paginator is active before deciding to stop
+        await ensureNextButtonReady();
 
         // Check again before navigating
         if (
