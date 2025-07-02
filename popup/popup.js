@@ -49,10 +49,14 @@ class PopupController {
         case "SCRAPE_PROGRESS":
           this.updateProgress(message.data);
           break;
-        case "SCRAPE_COMPLETE":
-          this.handleScrapeComplete();
+        case "SCRAPE_COMPLETE": // Normal completion
+          this.handleScrapeComplete(message.data ? message.data.message : "Scraping completed successfully!");
+          break;
+        case "SCRAPE_ERRORED": // Scraping failed critically
+          this.handleScrapeError(message.data ? message.data.message : "Scraping failed due to an unknown error.");
           break;
       }
+      return true; // Indicate that the message was handled (especially for async)
     });
   }
 
@@ -86,22 +90,27 @@ class PopupController {
         return;
       }
 
-      this.setScrapingState(true);
+      // this.setScrapingState(true); // Optimistically set state, or wait for response.
+                                    // Let's wait for response to be more accurate.
 
       const response = await chrome.runtime.sendMessage({
         type: "START_SCRAPING",
       });
-      if (response.success) {
-        this.showMessage("Scraping started successfully", "success");
+
+      // Response from background now reflects content script's ability to start
+      if (response && response.success) {
+        this.setScrapingState(true); // Set state only on confirmed start
+        this.showMessage(response.message || "Scraping started successfully!", "success");
         this.elements.progressSection.style.display = "block";
+        this.elements.progressText.textContent = "Scraping initiated..."; // Initial progress text
       } else {
-        this.setScrapingState(false);
-        this.showMessage("Failed to start scraping", "error");
+        // this.setScrapingState(false); // Already false or will be set by error handler
+        this.showMessage(response.error || "Failed to start scraping. Check console for details.", "error");
       }
-    } catch (error) {
-      console.error("Error starting scraping:", error);
+    } catch (error) { // This catches errors in chrome.runtime.sendMessage itself (e.g., background not reachable)
+      console.error("Error sending START_SCRAPING message:", error);
       this.setScrapingState(false);
-      this.showMessage("Error starting scraping", "error");
+      this.showMessage("Error trying to start scraping: " + error.message, "error");
     }
   }
 
@@ -270,21 +279,33 @@ class PopupController {
     }
   }
 
-  handleScrapeComplete() {
+  handleScrapeComplete(message = "Scraping completed successfully!") {
     this.setScrapingState(false);
     this.elements.progressSection.style.display = "none";
-    this.showMessage("Scraping completed successfully!", "success");
-    this.updateStatus();
+    this.showMessage(message, "success");
+    this.updateStatus(); // Refresh profile count
   }
 
-  showMessage(text, type = "info") {
+  handleScrapeError(errorMessage = "Scraping failed.") {
+    this.setScrapingState(false);
+    this.elements.progressSection.style.display = "none";
+    this.showMessage(errorMessage, "error");
+    this.updateStatus(); // Refresh profile count, though it might not have changed
+  }
+
+  showMessage(text, type = "info", duration = 5000) {
+    if (this.messageTimeout) {
+      clearTimeout(this.messageTimeout);
+    }
     this.elements.statusMessage.textContent = text;
     this.elements.statusMessage.className = `status-message ${type}`;
+    this.elements.statusMessage.style.display = "block"; // Make sure it's visible
 
-    // Auto-hide after 5 seconds
-    setTimeout(() => {
-      this.elements.statusMessage.style.display = "none";
-    }, 5000);
+    if (duration > 0) {
+      this.messageTimeout = setTimeout(() => {
+        this.elements.statusMessage.style.display = "none";
+      }, duration);
+    }
   }
 }
 

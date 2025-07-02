@@ -166,15 +166,22 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           break;
 
         case "START_SCRAPING":
-          // Forward to active tab
-          const tabs = await chrome.tabs.query({
-            active: true,
-            currentWindow: true,
-          });
-          if (tabs[0]) {
-            chrome.tabs.sendMessage(tabs[0].id, { type: "START_SCRAPING" });
+          // Forward to active tab and wait for its response
+          const activeTabs = await chrome.tabs.query({ active: true, currentWindow: true });
+          if (activeTabs[0] && activeTabs[0].id) {
+            try {
+              // The content script's START_SCRAPING listener is now async and will use sendResponse.
+              // So, we await its response here.
+              const contentResponse = await chrome.tabs.sendMessage(activeTabs[0].id, { type: "START_SCRAPING" });
+              sendResponse(contentResponse); // Relay content script's response (success/failure) to popup
+            } catch (e) {
+              console.error("Error sending START_SCRAPING to content script or content script error:", e);
+              sendResponse({ success: false, error: "Failed to start scraping in content script. Is it on a LinkedIn search page? " + e.message });
+            }
+          } else {
+            sendResponse({ success: false, error: "No active tab found to start scraping." });
           }
-          sendResponse({ success: true });
+          // sendResponse is handled by the async path above, so 'return true' in listener is critical.
           break;
 
         case "STOP_SCRAPING":
@@ -209,16 +216,41 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           sendResponse({ success: true });
           break;
 
+        case "SCRAPE_FAILED":
+          console.error("Scraping failed in content script:", msg.error);
+          // Notify popup
+          try {
+            // Use a distinct message type for the popup to handle this specific state
+            chrome.runtime.sendMessage({
+              type: "SCRAPE_ERRORED",
+              data: { message: msg.error || "Unknown error from content script." }
+            });
+          } catch (e) {
+            // Popup might not be open, ignore
+            console.warn("Could not send SCRAPE_ERRORED to popup (it might be closed). Error:", e.message);
+          }
+          sendResponse({ success: true, message: "Failure notification processed." }); // Acknowledge receipt of failure
+          break;
+
         default:
+          console.warn("Background script received unknown message type:", msg.type);
           sendResponse({ success: false, error: "Unknown message type" });
       }
     } catch (error) {
-      console.error("Background script error:", error);
-      sendResponse({ success: false, error: error.message });
+      console.error("Background script error during message handling:", error);
+      // Ensure sendResponse is called even in case of unexpected errors if it hasn't been already.
+      // This check is a bit tricky because sendResponse might have been called by specific case handlers.
+      // However, if an error occurs outside of those or before they call sendResponse:
+      try {
+        sendResponse({ success: false, error: error.message });
+      } catch (e) {
+        // If sendResponse itself fails (e.g., channel closed), nothing more to do.
+        console.error("Failed to send error response:", e);
+      }
     }
   })();
 
-  return true; // Keep message channel open for async response
+  return true; // Keep message channel open for async response from all handlers
 });
 
 // Listen for tab updates to detect navigation
