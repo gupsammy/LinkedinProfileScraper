@@ -77,8 +77,12 @@ class PopupController {
       });
       const currentTab = tabs[0];
 
-      if (!(currentTab.url.includes("linkedin.com/search/results/people/?") || 
-            currentTab.url.includes("linkedin.com/search/results/people?"))) {
+      if (
+        !(
+          currentTab.url.includes("linkedin.com/search/results/people/?") ||
+          currentTab.url.includes("linkedin.com/search/results/people?")
+        )
+      ) {
         this.showMessage(
           "Please navigate to a LinkedIn people search page first",
           "error"
@@ -233,9 +237,9 @@ class PopupController {
 
       if (response.success) {
         this.showMessage("Database cleared successfully", "success");
-        // Force update the status display
-        this.elements.profileCount.textContent = "0";
-        await this.updateStatus();
+        // Update the status display with the actual count from the response
+        this.elements.profileCount.textContent = response.profileCount || "0";
+        await this.updateStatus(); // Double-check the status
       } else {
         this.showMessage("Failed to clear database", "error");
       }

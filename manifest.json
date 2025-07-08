@@ -1,7 +1,7 @@
 {
   "name": "LinkedIn People Search Scraper",
   "manifest_version": 3,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Scrapes LinkedIn people-search results into IndexedDB and lets you export/import JSON.",
   "permissions": ["tabs", "scripting", "storage"],
   "host_permissions": ["https://www.linkedin.com/*"],

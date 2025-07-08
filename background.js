@@ -105,16 +105,36 @@ const db = new ProfileDatabase();
 (async () => {
   try {
     await db.ensureReady();
-    console.log("IndexedDB 'linkedin_profiles' initialized successfully");
-    const count = await db.getCount();
-    console.log(`Current profile count in DB: ${count}`);
+    console.log(`✅ IndexedDB '${DB_NAME}' initialized successfully`);
+    console.log(`📊 Database version: ${DB_VERSION}`);
+    console.log(`🗂️ Object store: ${STORE_NAME}`);
 
-    // Force database visibility by performing a small operation
+    const count = await db.getCount();
+    console.log(`📈 Current profile count in DB: ${count}`);
+
+    // Force database visibility by performing operations that make it appear in DevTools
     const testTransaction = db.db.transaction([STORE_NAME], "readonly");
     const testStore = testTransaction.objectStore(STORE_NAME);
-    console.log("Database stores:", Array.from(db.db.objectStoreNames));
+    console.log(
+      `🔍 Database stores: [${Array.from(db.db.objectStoreNames).join(", ")}]`
+    );
+    console.log(`🔧 Available indexes: scrapedAt, name`);
+
+    // Perform a small operation to ensure database shows in DevTools
+    const testRequest = testStore.getAllKeys();
+    testRequest.onsuccess = () => {
+      console.log(
+        `🗝️ Database contains ${testRequest.result.length} profile keys`
+      );
+      console.log(
+        `🔗 View database: Chrome DevTools > Application > IndexedDB > ${DB_NAME}`
+      );
+    };
   } catch (error) {
-    console.error("Failed to initialize IndexedDB:", error);
+    console.error("❌ Failed to initialize IndexedDB:", error);
+    console.log(
+      "💡 Troubleshooting: Check if extension has storage permissions"
+    );
   }
 })();
 
@@ -156,12 +176,17 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           break;
 
         case "CLEAR_DB":
+          console.log("🗑️ Clearing all profiles from database...");
           await db.clear();
-          sendResponse({ success: true });
+          const finalCount = await db.getCount();
+          console.log(`✅ Database cleared. Profile count: ${finalCount}`);
+          sendResponse({ success: true, profileCount: finalCount });
           break;
 
         case "GET_STATUS":
+          console.log("📊 Getting database status...");
           const status = await db.getCount();
+          console.log(`📈 Current profile count: ${status}`);
           sendResponse({ success: true, profileCount: status });
           break;
 
