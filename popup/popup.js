@@ -278,12 +278,19 @@ class PopupController {
   }
 
   showMessage(text, type = "info") {
+    // Ensure the message is visible each time it's shown
+    if (this.messageTimeout) {
+      clearTimeout(this.messageTimeout);
+    }
+
     this.elements.statusMessage.textContent = text;
     this.elements.statusMessage.className = `status-message ${type}`;
+    this.elements.statusMessage.style.display = "block";
 
     // Auto-hide after 5 seconds
-    setTimeout(() => {
+    this.messageTimeout = setTimeout(() => {
       this.elements.statusMessage.style.display = "none";
+      this.messageTimeout = null;
     }, 5000);
   }
 }
