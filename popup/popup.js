@@ -10,6 +10,7 @@ class PopupController {
       btnExport: document.getElementById("btnExport"),
       btnImport: document.getElementById("btnImport"),
       btnClear: document.getElementById("btnClear"),
+      btnHealthCheck: document.getElementById("btnHealthCheck"),
       importFile: document.getElementById("importFile"),
       progressSection: document.getElementById("progressSection"),
       progressText: document.getElementById("progressText"),
@@ -37,6 +38,9 @@ class PopupController {
     this.elements.btnClear.addEventListener("click", () =>
       this.clearDatabase()
     );
+    this.elements.btnHealthCheck.addEventListener("click", () =>
+      this.runHealthCheck()
+    );
     this.elements.importFile.addEventListener("change", (e) =>
       this.handleFileImport(e)
     );
@@ -58,12 +62,27 @@ class PopupController {
 
   async updateStatus() {
     try {
+      console.log("🔄 Updating popup status...");
+
       const response = await chrome.runtime.sendMessage({ type: "GET_STATUS" });
-      if (response.success) {
-        this.elements.profileCount.textContent = response.profileCount;
+
+      if (response && response.success) {
+        this.elements.profileCount.textContent = response.profileCount || "0";
+        console.log(`✅ Status updated: ${response.profileCount} profiles`);
+
+        // Update UI based on database health if available
+        if (response.healthy === false) {
+          this.showMessage("Database health check failed", "error");
+        }
+      } else {
+        const errorMessage = response?.error || "Unable to get status";
+        console.error("❌ Get status failed:", errorMessage);
+        this.elements.profileCount.textContent = "?";
+        this.showMessage(`Status error: ${errorMessage}`, "error");
       }
     } catch (error) {
-      console.error("Error getting status:", error);
+      console.error("❌ Error getting status:", error);
+      this.elements.profileCount.textContent = "?";
       this.showMessage("Error connecting to extension", "error");
     }
   }
@@ -232,22 +251,81 @@ class PopupController {
 
     try {
       this.elements.btnClear.classList.add("loading");
+      this.showMessage("Clearing database...", "info");
 
       const response = await chrome.runtime.sendMessage({ type: "CLEAR_DB" });
 
-      if (response.success) {
+      if (response && response.success) {
         this.showMessage("Database cleared successfully", "success");
         // Update the status display with the actual count from the response
         this.elements.profileCount.textContent = response.profileCount || "0";
-        await this.updateStatus(); // Double-check the status
+
+        // Double-check the status to ensure UI is in sync
+        await this.updateStatus();
+
+        console.log("✅ Database cleared and status updated");
       } else {
-        this.showMessage("Failed to clear database", "error");
+        const errorMessage = response?.error || "Unknown error occurred";
+        console.error("❌ Clear database failed:", errorMessage);
+        this.showMessage(`Failed to clear database: ${errorMessage}`, "error");
+
+        // Try to get current status anyway
+        await this.updateStatus();
       }
     } catch (error) {
-      console.error("Error clearing database:", error);
-      this.showMessage("Error clearing database", "error");
+      console.error("❌ Error clearing database:", error);
+      this.showMessage(`Error clearing database: ${error.message}`, "error");
+
+      // Still try to update status in case of communication issues
+      try {
+        await this.updateStatus();
+      } catch (statusError) {
+        console.error(
+          "❌ Error updating status after clear failure:",
+          statusError
+        );
+      }
     } finally {
       this.elements.btnClear.classList.remove("loading");
+    }
+  }
+
+  async runHealthCheck() {
+    try {
+      this.elements.btnHealthCheck.classList.add("loading");
+      this.showMessage("Running database health check...", "info");
+
+      const response = await chrome.runtime.sendMessage({
+        type: "HEALTH_CHECK",
+      });
+
+      if (response && response.success && response.health) {
+        const health = response.health;
+
+        if (health.healthy) {
+          this.showMessage(
+            `Database healthy! Contains ${health.count} profiles`,
+            "success"
+          );
+          console.log("✅ Database health check passed:", health);
+        } else {
+          this.showMessage(`Database unhealthy: ${health.error}`, "error");
+          console.error("❌ Database health check failed:", health);
+        }
+
+        // Update status after health check
+        await this.updateStatus();
+      } else {
+        const errorMessage =
+          response?.error || "Health check communication failed";
+        this.showMessage(`Health check failed: ${errorMessage}`, "error");
+        console.error("❌ Health check response error:", errorMessage);
+      }
+    } catch (error) {
+      console.error("❌ Error running health check:", error);
+      this.showMessage(`Health check error: ${error.message}`, "error");
+    } finally {
+      this.elements.btnHealthCheck.classList.remove("loading");
     }
   }
 

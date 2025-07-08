@@ -5,6 +5,7 @@ let isScrapingActive = false;
 let currentPage = 1;
 let totalPages = 1;
 let scrapingInProgress = false;
+let continueScrapingTimeout = null;
 
 // Utility functions
 function extractProfileId(url) {
@@ -185,166 +186,158 @@ function scrapeCurrentPage() {
     const profiles = [];
 
     // Use structural and semantic selectors that are stable across LinkedIn updates
+    // Order by specificity - most specific first to avoid picking up non-profile elements
     const resultSelectors = [
-      "main ul li", // Most direct approach - main search results
+      "div[data-chameleon-result-urn]", // Profile data divs - get parent li elements (most reliable)
+      "main ul li", // Main search results container
       "main div ul li", // One level deeper
       "main div div ul li", // Two levels deeper
       "main div div div ul li", // Three levels deeper
       "main div div div div ul li", // Four levels deeper (based on your XPath)
-      "div[data-chameleon-result-urn] li", // Data attribute approach
-      "li[data-chameleon-result-urn]", // Direct li with data attributes
+      "ul[role='list'] li", // Less specific - can pick up navigation elements
       ".search-results-container li", // Fallback for older structure
     ];
 
     let searchResults = [];
+    let searchResultsSelector = "";
+
     for (const selector of resultSelectors) {
-      searchResults = document.querySelectorAll(selector);
-      if (searchResults.length > 0) {
-        console.log(`Found results using selector: ${selector}`);
-        break;
+      if (selector === "div[data-chameleon-result-urn]") {
+        // Special handling - get parent li elements of profile data divs
+        const profileDivs = document.querySelectorAll(selector);
+        const parentLis = Array.from(profileDivs)
+          .map((div) => div.closest("li"))
+          .filter((li) => li);
+        if (parentLis.length > 0) {
+          searchResults = parentLis;
+          searchResultsSelector = `${selector} (parent li)`;
+          break;
+        }
+      } else {
+        searchResults = document.querySelectorAll(selector);
+        if (searchResults.length > 0) {
+          searchResultsSelector = selector;
+          break;
+        }
       }
     }
 
     // If no results found with specific selectors, try broader search
     if (searchResults.length === 0) {
-      console.log(
-        "No results with primary selectors, trying broader search..."
-      );
-      // Look for any li that contains a LinkedIn profile link
-      const allLis = document.querySelectorAll("li");
-      const profileLis = Array.from(allLis).filter(
-        (li) =>
-          li.querySelector('a[href*="/in/"]') ||
-          li.querySelector('a[href*="linkedin.com/in/"]')
-      );
-      searchResults = profileLis;
-      if (searchResults.length > 0) {
-        console.log(
-          `Found ${searchResults.length} results using fallback profile link search`
-        );
-      }
+      console.log("No search results found on this page using any selector");
+      return;
     }
 
+    console.log(`Found results using selector: ${searchResultsSelector}`);
     console.log(
       `Found ${searchResults.length} profile results on page ${currentPage}`
     );
 
     searchResults.forEach((result, index) => {
       try {
-        // Extract profile link using stable patterns (avoid dynamic classes in context)
+        // Extract profile link using current working classes first, then fallbacks
         const profileLinkSelectors = [
-          'a.mgFkhbNCAguTzbjLozeYRagsCtabmGnDJw[href*="/in/"]', // The class mgFkhbNCAguTzbjLozeYRagsCtabmGnDJw seems stable for profile links
+          'a.dGCAEBVXgkGQKLntuWxHvfKkpBSICAYQaUlZpU[href*="/in/"]', // Current working class from sample data
           'div.mb1 a[href*="/in/"]', // Profile link within mb1 container (mb1 is semantic)
           'a[href*="/in/"]:not([href*="search"])', // Any /in/ link that's not a search link
-          'a[href*="linkedin.com/in/"]',
+          'a[href*="linkedin.com/in/"]', // Absolute fallback
         ];
 
         let profileLink = null;
         let profileName = "";
 
         for (const selector of profileLinkSelectors) {
-          const linkElement = result.querySelector(selector);
-          if (linkElement) {
-            profileLink = linkElement.href;
+          const linkElements = result.querySelectorAll(selector); // Get ALL matching links, not just first
 
-            // Get name from the link element - based on exact structure from poststructure.html
-            const nameSelectors = [
-              'span[dir="ltr"] > span[aria-hidden="true"]', // Exact structure: <span dir="ltr"><span aria-hidden="true">Name</span>
-              'span[dir="ltr"] span[aria-hidden="true"]', // Same but less strict
-              'span > span[aria-hidden="true"]', // Direct child fallback
-              'span span[aria-hidden="true"]', // General nested span
-              'span[aria-hidden="true"]:not(.visually-hidden)', // Exclude visually-hidden spans
-              'span[aria-hidden="true"]', // Broad fallback
-            ];
+          for (const linkElement of linkElements) {
+            if (linkElement && linkElement.href) {
+              profileLink = linkElement.href; // Use this as the profile URL
 
-            for (const nameSelector of nameSelectors) {
-              const nameElement = linkElement.querySelector(nameSelector);
-              if (nameElement && nameElement.textContent.trim()) {
-                let extractedName = nameElement.textContent.trim();
+              // Get name from the link element - prioritize img alt, then span structure
+              const nameSelectors = [
+                "img[alt]", // HIGHEST PRIORITY: Image alt attribute (works for majority of profiles)
+                'span[dir="ltr"] > span[aria-hidden="true"]', // Exact structure: <span dir="ltr"><span aria-hidden="true">Name</span>
+                'span[dir="ltr"] span[aria-hidden="true"]', // Same but less strict
+                'span > span[aria-hidden="true"]', // Direct child fallback
+                'span span[aria-hidden="true"]', // General nested span
+                'span[aria-hidden="true"]:not(.visually-hidden)', // Exclude visually-hidden spans
+                'span[aria-hidden="true"]', // Broad fallback
+              ];
 
-                // Clean up HTML comments and normalize text
-                extractedName = extractedName.replace(/<!---->/g, "").trim();
+              for (const nameSelector of nameSelectors) {
+                const nameElement = linkElement.querySelector(nameSelector);
+                if (nameElement) {
+                  let extractedName = "";
 
-                // Filter out status-related text
-                const statusPhrases = [
-                  "Status is offline",
-                  "Status is online",
-                  "Online",
-                  "Offline",
-                  "Away",
-                  "Busy",
-                  "Last seen",
-                  "Active now",
-                ];
+                  // Handle img alt attribute
+                  if (
+                    nameElement.tagName.toLowerCase() === "img" &&
+                    nameElement.alt
+                  ) {
+                    extractedName = nameElement.alt.trim();
+                  }
+                  // Handle text content from spans
+                  else if (
+                    nameElement.textContent &&
+                    nameElement.textContent.trim()
+                  ) {
+                    extractedName = nameElement.textContent
+                      .trim()
+                      .replace(/<!---->/g, "")
+                      .trim();
+                  }
 
-                const isStatusText = statusPhrases.some((phrase) =>
-                  extractedName.toLowerCase().includes(phrase.toLowerCase())
-                );
+                  if (extractedName) {
+                    // Filter out status-related text
+                    const statusPhrases = [
+                      "Status is offline",
+                      "Status is online",
+                      "Online",
+                      "Offline",
+                      "Away",
+                      "Busy",
+                      "Last seen",
+                      "Active now",
+                    ];
 
-                // Validate that this looks like a real name (basic validation)
-                const looksLikeName =
-                  extractedName.length > 1 &&
-                  extractedName.length < 100 &&
-                  !isStatusText &&
-                  /^[a-zA-Z\s\u00C0-\u017F\u0100-\u024F\u1E00-\u1EFF\u2000-\u206F\u0400-\u04FF\u0500-\u052F\u2DE0-\u2DFF\uA640-\uA69F\u0370-\u03FF\u1F00-\u1FFF]+/.test(
-                    extractedName
-                  );
+                    const isStatusText = statusPhrases.some((phrase) =>
+                      extractedName.toLowerCase().includes(phrase.toLowerCase())
+                    );
 
-                if (looksLikeName) {
-                  profileName = extractedName;
-                  console.log(
-                    `Found name using selector "${nameSelector}": "${profileName}"`
-                  );
-                  break;
-                } else {
-                  console.log(
-                    `Rejected text "${extractedName}" from selector "${nameSelector}" (appears to be status or invalid)`
-                  );
+                    // Validate that this looks like a real name (basic validation)
+                    const looksLikeName =
+                      extractedName.length > 1 &&
+                      extractedName.length < 100 &&
+                      !isStatusText &&
+                      /^[a-zA-Z\s\u00C0-\u017F\u0100-\u024F\u1E00-\u1EFF\u2000-\u206F\u0400-\u04FF\u0500-\u052F\u2DE0-\u2DFF\uA640-\uA69F\u0370-\u03FF\u1F00-\u1FFF()]+/.test(
+                        extractedName
+                      );
+
+                    if (looksLikeName) {
+                      profileName = extractedName;
+                      console.log(
+                        `Found name using selector "${nameSelector}": "${profileName}"`
+                      );
+                      break; // Break out of nameSelectors loop
+                    } else {
+                      console.log(
+                        `Rejected text "${extractedName}" from selector "${nameSelector}" (appears to be status or invalid)`
+                      );
+                    }
+                  }
                 }
               }
-            }
 
-            // Enhanced fallback: get text content directly from link but filter it
-            if (!profileName && linkElement.textContent.trim()) {
-              let fallbackText = linkElement.textContent.trim();
-              // Try to extract just the name part from the full link text
-              const lines = fallbackText
-                .split("\n")
-                .map((line) => line.trim())
-                .filter((line) => line.length > 0);
-              for (const line of lines) {
-                const cleanLine = line.replace(/<!---->/g, "").trim();
-                const statusPhrases = [
-                  "Status is offline",
-                  "Status is online",
-                  "Online",
-                  "Offline",
-                  "Away",
-                  "Busy",
-                  "Last seen",
-                  "Active now",
-                ];
-                const isStatusText = statusPhrases.some((phrase) =>
-                  cleanLine.toLowerCase().includes(phrase.toLowerCase())
-                );
-
-                if (
-                  cleanLine.length > 1 &&
-                  cleanLine.length < 100 &&
-                  !isStatusText &&
-                  /^[a-zA-Z\s\u00C0-\u017F\u0100-\u024F\u1E00-\u1EFF\u2000-\u206F\u0400-\u04FF\u0500-\u052F\u2DE0-\u2DFF\uA640-\uA69F\u0370-\u03FF\u1F00-\u1FFF]+/.test(
-                    cleanLine
-                  )
-                ) {
-                  profileName = cleanLine;
-                  console.log(
-                    `Found name using fallback text parsing: "${profileName}"`
-                  );
-                  break;
-                }
+              // If we found a name in this link, we're done
+              if (profileName) {
+                break; // Break out of linkElements loop
               }
             }
-            break;
+          }
+
+          // If we found a profile link and name, we're done with all selectors
+          if (profileLink && profileName) {
+            break; // Break out of profileLinkSelectors loop
           }
         }
 
@@ -363,35 +356,73 @@ function scrapeCurrentPage() {
           console.warn(
             `Profile link found but no name extracted for result ${index + 1}`
           );
-          console.log(
-            "Debug - Link element HTML:",
-            linkElement.outerHTML.substring(0, 300) + "..."
-          );
-          console.log(
-            "Debug - Link text content:",
-            linkElement.textContent.substring(0, 200)
-          );
 
-          // Show all span elements within the link for debugging
-          const allSpans = linkElement.querySelectorAll("span");
-          console.log(
-            `Debug - Found ${allSpans.length} span elements in link:`
-          );
-          allSpans.forEach((span, i) => {
+          // FINAL FALLBACK: Extract name from URL if all else fails
+          if (profileLink) {
+            try {
+              const urlParts = profileLink
+                .split("/in/")[1]
+                ?.split("?")[0]
+                ?.split("/")[0];
+              if (urlParts && urlParts.length > 2) {
+                // Convert LinkedIn URL slug to readable name (e.g., "john-doe-123" -> "John Doe")
+                const nameFromUrl = urlParts
+                  .replace(/-\d+$/, "") // Remove trailing numbers
+                  .split("-")
+                  .filter((part) => part.length > 1 && !/^\d+$/.test(part)) // Remove short parts and pure numbers
+                  .map(
+                    (word) =>
+                      word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+                  )
+                  .join(" ");
+
+                if (nameFromUrl.length > 2) {
+                  profileName = nameFromUrl;
+                  console.log(`📝 Extracted name from URL: "${profileName}"`);
+                }
+              }
+            } catch (error) {
+              console.log("Failed to extract name from URL:", error);
+            }
+          }
+
+          if (!profileName) {
             console.log(
-              `  Span ${
-                i + 1
-              }: "${span.textContent.trim()}" | aria-hidden: ${span.getAttribute(
-                "aria-hidden"
-              )} | class: ${span.className}`
+              "Debug - Link element HTML:",
+              linkElement
+                ? linkElement.outerHTML.substring(0, 300) + "..."
+                : "No link element"
             );
-          });
+            console.log(
+              "Debug - Link text content:",
+              linkElement
+                ? linkElement.textContent.substring(0, 200)
+                : "No link element"
+            );
+
+            // Show all span elements within the link for debugging
+            if (linkElement) {
+              const allSpans = linkElement.querySelectorAll("span");
+              console.log(
+                `Debug - Found ${allSpans.length} span elements in link:`
+              );
+              allSpans.forEach((span, i) => {
+                console.log(
+                  `  Span ${
+                    i + 1
+                  }: "${span.textContent.trim()}" | aria-hidden: ${span.getAttribute(
+                    "aria-hidden"
+                  )} | class: ${span.className}`
+                );
+              });
+            }
+          }
         }
 
-        // Extract headline/title - use stable patterns with fallbacks
+        // Extract headline/title - use current working classes first, then fallbacks
         const headlineSelectors = [
-          ".IiwrdSaZAZYmlnxRtwjZyHnRkVqELimfgEMk.t-14.t-black.t-normal", // Hash class appears stable across samples
-          "div.mb1 .IiwrdSaZAZYmlnxRtwjZyHnRkVqELimfgEMk", // With context
+          ".WQvDaGLgJAxxIvMgRXKtFRwauNhWHvbLmKV.t-14.t-black.t-normal", // Current working class from sample data
+          "div.mb1 .WQvDaGLgJAxxIvMgRXKtFRwauNhWHvbLmKV", // With context
           "div.mb1 div.t-14.t-black.t-normal", // Semantic fallback
           "div.t-14.t-black.t-normal", // Direct semantic match
           'div[class*="t-14"][class*="t-black"][class*="t-normal"]', // Pattern matching
@@ -407,10 +438,10 @@ function scrapeCurrentPage() {
           }
         }
 
-        // Extract location - use stable patterns with fallbacks
+        // Extract location - use current working classes first, then fallbacks
         const locationSelectors = [
-          ".dYSmssFoeurfwRBkaSJKzhvqkVuxjhmxk.t-14.t-normal", // Hash class appears stable across samples
-          "div.mb1 .dYSmssFoeurfwRBkaSJKzhvqkVuxjhmxk", // With context
+          ".DtvjKFRzdrPWFAkJEOCmaeJlenAlYxLEw.t-14.t-normal", // Current working class from sample data
+          "div.mb1 .DtvjKFRzdrPWFAkJEOCmaeJlenAlYxLEw", // With context
           "div.mb1 div.t-14.t-normal:not(.t-black)", // Semantic fallback
           "div.t-14.t-normal:not(.t-black)", // Direct semantic match
           'div[class*="t-14"][class*="t-normal"]:not([class*="t-black"])', // Pattern matching
@@ -430,41 +461,47 @@ function scrapeCurrentPage() {
         const cleanUrl = cleanProfileUrl(profileLink);
         const profileId = extractProfileId(cleanUrl);
 
-        if (profileId && profileName) {
+        // ROBUST EXTRACTION: Save profile as long as we have a valid URL and ID
+        // Use fallback values for missing fields instead of skipping entire profile
+        if (profileId && cleanUrl) {
           const profile = {
             id: profileId,
-            name: profileName,
+            name: profileName || "Name not available", // Fallback for missing name
             url: cleanUrl,
-            headline: headline,
-            location: location,
+            headline: headline || "Headline not available", // Fallback for missing headline
+            location: location || "Location not available", // Fallback for missing location
             scrapedAt: Date.now(),
           };
 
           profiles.push(profile);
           console.log(`Scraped profile ${index + 1}:`, profile);
+
+          // Log what fields were missing for debugging
+          const missingFields = [];
+          if (!profileName) missingFields.push("name");
+          if (!headline) missingFields.push("headline");
+          if (!location) missingFields.push("location");
+
+          if (missingFields.length > 0) {
+            console.log(
+              `  ⚠️  Missing fields: ${missingFields.join(
+                ", "
+              )} - using fallback values`
+            );
+          }
         } else {
-          console.warn(`Invalid profile data for result ${index + 1}:`);
+          // Only skip if we don't have essential data (URL/ID)
+          console.error(
+            `❌ Cannot save profile ${index + 1} - missing essential data:`
+          );
           console.log(`  Profile ID: "${profileId}"`);
-          console.log(`  Profile Name: "${profileName}"`);
           console.log(`  Clean URL: "${cleanUrl}"`);
           console.log(`  Original URL: "${profileLink}"`);
 
-          // Don't completely skip this profile - still try to save what we have if we have a URL
-          if (cleanUrl && profileId) {
-            const partialProfile = {
-              id: profileId,
-              name: profileName || "Unknown Name",
-              url: cleanUrl,
-              headline: headline,
-              location: location,
-              scrapedAt: Date.now(),
-            };
-            profiles.push(partialProfile);
-            console.log(
-              `Saved partial profile data for result ${index + 1}:`,
-              partialProfile
-            );
-          }
+          // Still log what we found for debugging
+          if (profileName) console.log(`  Found name: "${profileName}"`);
+          if (headline) console.log(`  Found headline: "${headline}"`);
+          if (location) console.log(`  Found location: "${location}"`);
         }
       } catch (error) {
         console.error(`Error scraping profile ${index + 1}:`, error);
@@ -480,20 +517,25 @@ function scrapeCurrentPage() {
 
 // Save profiles to background script
 async function saveProfiles(profiles) {
-  if (profiles.length === 0) return;
-
   try {
     const response = await chrome.runtime.sendMessage({
       type: "SAVE_PROFILES",
-      data: profiles,
+      data: profiles || [],
     });
 
-    if (response.success) {
-      console.log(
-        `Saved ${response.saved} profiles. Total in DB: ${response.total}`
-      );
+    if (response && response.success) {
+      if (profiles && profiles.length > 0) {
+        console.log(
+          `Saved ${response.saved} profiles. Total in DB: ${response.total}`
+        );
+      } else {
+        console.log(
+          `No profiles to save, but database initialized. Total in DB: ${response.total}`
+        );
+      }
     } else {
-      console.error("Failed to save profiles:", response.error);
+      const errorMessage = response?.error || "Unknown error occurred";
+      console.error("Failed to save profiles:", errorMessage);
     }
   } catch (error) {
     console.error("Error saving profiles:", error);
@@ -504,7 +546,10 @@ async function saveProfiles(profiles) {
 async function navigateToNextPage() {
   try {
     // Check if scraping was stopped before navigation
-    if (!isScrapingActive) {
+    if (
+      !isScrapingActive ||
+      sessionStorage.getItem("scraperStopped") === "true"
+    ) {
       console.log("Scraping was stopped, canceling navigation");
       return;
     }
@@ -523,10 +568,11 @@ async function navigateToNextPage() {
     // Add random delay before navigation
     await sleep(getRandomDelay());
 
-    // Double-check if scraping is still active before navigating
+    // Final check before actual navigation
     if (
       isScrapingActive &&
-      sessionStorage.getItem("scraperActive") === "true"
+      sessionStorage.getItem("scraperActive") === "true" &&
+      sessionStorage.getItem("scraperStopped") !== "true"
     ) {
       location.href = url.toString();
     } else {
@@ -560,7 +606,8 @@ async function startScraping() {
 
     console.log(`Starting scraping: Page ${currentPage} of ${totalPages}`);
 
-    // Set session storage for persistence across page loads
+    // Clear any previous stop flag and set session storage for persistence
+    sessionStorage.removeItem("scraperStopped");
     sessionStorage.setItem("scraperActive", "true");
     sessionStorage.setItem("scraperCurrentPage", currentPage.toString());
     sessionStorage.setItem("scraperTotalPages", totalPages.toString());
@@ -572,11 +619,9 @@ async function startScraping() {
       console.warn(
         "No profiles found on current page - this might indicate selector issues"
       );
-      // Still save the empty array to trigger IndexedDB creation
-      await saveProfiles([]);
-    } else {
-      await saveProfiles(profiles);
     }
+    // Always save profiles (empty or not) to ensure database initialization
+    await saveProfiles(profiles);
 
     // Ensure paginator is active before deciding to stop (mainly for first page)
     await ensureNextButtonReady();
@@ -604,16 +649,29 @@ function stopScraping() {
   isScrapingActive = false;
   scrapingInProgress = false;
 
-  // Clear session storage
+  // Clear any ongoing timeouts
+  if (continueScrapingTimeout) {
+    clearTimeout(continueScrapingTimeout);
+    continueScrapingTimeout = null;
+  }
+
+  // Clear session storage and set stop flag
   sessionStorage.removeItem("scraperActive");
   sessionStorage.removeItem("scraperCurrentPage");
   sessionStorage.removeItem("scraperTotalPages");
+  sessionStorage.setItem("scraperStopped", "true");
 
   console.log("Scraping stopped");
 }
 
 // Check if scraping should continue (after page load)
 function checkContinueScraping() {
+  const wasStopped = sessionStorage.getItem("scraperStopped") === "true";
+  if (wasStopped) {
+    console.log("Scraping was previously stopped, not resuming");
+    return;
+  }
+
   const shouldContinue = sessionStorage.getItem("scraperActive") === "true";
 
   if (shouldContinue && isValidPeopleSearchPage()) {
@@ -626,13 +684,19 @@ function checkContinueScraping() {
 
     console.log(`Continuing scraping: Page ${currentPage} of ${totalPages}`);
 
+    // Clear any existing timeout
+    if (continueScrapingTimeout) {
+      clearTimeout(continueScrapingTimeout);
+    }
+
     // Wait for page to fully load, then continue
-    setTimeout(async () => {
+    continueScrapingTimeout = setTimeout(async () => {
       try {
-        // Double-check if scraping is still active
+        // Double-check if scraping is still active and not stopped
         if (
           !isScrapingActive ||
-          sessionStorage.getItem("scraperActive") !== "true"
+          sessionStorage.getItem("scraperActive") !== "true" ||
+          sessionStorage.getItem("scraperStopped") === "true"
         ) {
           console.log("Scraping was stopped during page load, aborting");
           return;
@@ -644,10 +708,9 @@ function checkContinueScraping() {
           console.warn(
             "No profiles found on current page - this might indicate selector issues"
           );
-          await saveProfiles([]);
-        } else {
-          await saveProfiles(profiles);
         }
+        // Always save profiles (empty or not) to ensure database initialization
+        await saveProfiles(profiles);
 
         // Ensure paginator is active before deciding to stop
         await ensureNextButtonReady();
@@ -655,7 +718,8 @@ function checkContinueScraping() {
         // Check again before navigating
         if (
           isScrapingActive &&
-          sessionStorage.getItem("scraperActive") === "true"
+          sessionStorage.getItem("scraperActive") === "true" &&
+          sessionStorage.getItem("scraperStopped") !== "true"
         ) {
           if (currentPage < totalPages || hasNextPage()) {
             await navigateToNextPage();
@@ -680,7 +744,7 @@ function checkContinueScraping() {
 }
 
 // Message listener
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   switch (message.type) {
     case "START_SCRAPING":
       startScraping();
