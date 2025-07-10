@@ -3,11 +3,11 @@
 
 // Start scraping process
 async function startScraping() {
-  const state = window.LinkedInScraperState;
-  const pagination = window.LinkedInScraperPagination;
-  const extractor = window.LinkedInScraperExtractor;
-  const validator = window.LinkedInScraperValidator;
-  const storageApi = window.LinkedInScraperStorageApi;
+  const state = window.LinkedInScraper?.State || window.LinkedInScraperState;
+  const pagination = window.LinkedInScraper?.Pagination || window.LinkedInScraperPagination;
+  const extractor = window.LinkedInScraper?.Extractor || window.LinkedInScraperExtractor;
+  const validator = window.LinkedInScraper?.Validator || window.LinkedInScraperValidator;
+  const storageApi = window.LinkedInScraper?.StorageApi || window.LinkedInScraperStorageApi;
 
   if (!state || !pagination || !extractor || !validator || !storageApi) {
     console.error("Required modules not available");
@@ -88,7 +88,7 @@ async function startScraping() {
 
 // Stop scraping process
 function stopScraping() {
-  const state = window.LinkedInScraperState;
+  const state = window.LinkedInScraper?.State || window.LinkedInScraperState;
   if (state) {
     state.stopScrapingState();
   }
@@ -96,12 +96,12 @@ function stopScraping() {
 
 // Check if scraping should continue (after page load)
 function checkContinueScraping() {
-  const state = window.LinkedInScraperState;
-  const pagination = window.LinkedInScraperPagination;
-  const extractor = window.LinkedInScraperExtractor;
-  const validator = window.LinkedInScraperValidator;
-  const storageApi = window.LinkedInScraperStorageApi;
-  const messageBridge = window.LinkedInScraperMessageBridge;
+  const state = window.LinkedInScraper?.State || window.LinkedInScraperState;
+  const pagination = window.LinkedInScraper?.Pagination || window.LinkedInScraperPagination;
+  const extractor = window.LinkedInScraper?.Extractor || window.LinkedInScraperExtractor;
+  const validator = window.LinkedInScraper?.Validator || window.LinkedInScraperValidator;
+  const storageApi = window.LinkedInScraper?.StorageApi || window.LinkedInScraperStorageApi;
+  const messageBridge = window.LinkedInScraper?.MessageBridge || window.LinkedInScraperMessageBridge;
 
   if (!state || !pagination || !extractor || !validator || !storageApi) {
     console.error("Required modules not available");
@@ -197,12 +197,22 @@ function isValidPeopleSearchPage() {
   );
 }
 
-// Export functions
-window.LinkedInScraperController = {
-  startScraping,
-  stopScraping,
-  checkContinueScraping,
-  isValidPeopleSearchPage,
-};
+// Export functions using consolidated namespace
+if (window.LinkedInScraper && window.LinkedInScraper.registerModule) {
+  window.LinkedInScraper.registerModule('Controller', {
+    startScraping,
+    stopScraping,
+    checkContinueScraping,
+    isValidPeopleSearchPage
+  });
+} else {
+  // Fallback for backward compatibility during transition
+  window.LinkedInScraperController = {
+    startScraping,
+    stopScraping,
+    checkContinueScraping,
+    isValidPeopleSearchPage
+  };
+}
 
 console.log("controller.js module loaded");

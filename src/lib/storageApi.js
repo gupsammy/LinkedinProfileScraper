@@ -54,11 +54,20 @@ async function sendMessage(messageType, data = {}) {
   }
 }
 
-// Export functions
-window.LinkedInScraperStorageApi = {
-  saveProfiles,
-  notifyScrapingComplete,
-  sendMessage,
-};
+// Export functions using consolidated namespace
+if (window.LinkedInScraper && window.LinkedInScraper.registerModule) {
+  window.LinkedInScraper.registerModule('StorageApi', {
+    saveProfiles,
+    notifyScrapingComplete,
+    sendMessage
+  });
+} else {
+  // Fallback for backward compatibility during transition
+  window.LinkedInScraperStorageApi = {
+    saveProfiles,
+    notifyScrapingComplete,
+    sendMessage
+  };
+}
 
 console.log("storageApi.js module loaded");

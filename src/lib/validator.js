@@ -3,7 +3,7 @@
 
 // Extract and validate additional profile fields (headline, location)
 function extractAdditionalFields(resultElement) {
-  const { headlineSelectors, locationSelectors } = window.LinkedInScraperSelectors || {};
+  const { headlineSelectors, locationSelectors } = (window.LinkedInScraper?.Selectors || window.LinkedInScraperSelectors) || {};
   
   let headline = "";
   let location = "";
@@ -43,7 +43,7 @@ function cleanText(text) {
 
 // Create complete profile object with validation
 function createValidatedProfile(profileData) {
-  const { extractProfileId, cleanProfileUrl } = window.LinkedInScraperUtils || {};
+  const { extractProfileId, cleanProfileUrl } = (window.LinkedInScraper?.Utils || window.LinkedInScraperUtils) || {};
   
   if (!extractProfileId || !cleanProfileUrl) {
     console.error('Utility functions not available');
@@ -113,12 +113,22 @@ function validateProfileArray(profiles) {
   });
 }
 
-// Export functions
-window.LinkedInScraperValidator = {
-  extractAdditionalFields,
-  cleanText,
-  createValidatedProfile,
-  validateProfileArray
-};
+// Export functions using consolidated namespace
+if (window.LinkedInScraper && window.LinkedInScraper.registerModule) {
+  window.LinkedInScraper.registerModule('Validator', {
+    extractAdditionalFields,
+    cleanText,
+    createValidatedProfile,
+    validateProfileArray
+  });
+} else {
+  // Fallback for backward compatibility during transition
+  window.LinkedInScraperValidator = {
+    extractAdditionalFields,
+    cleanText,
+    createValidatedProfile,
+    validateProfileArray
+  };
+}
 
 console.log('validator.js module loaded');
