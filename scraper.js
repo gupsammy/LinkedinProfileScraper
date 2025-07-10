@@ -11,6 +11,24 @@ let continueScrapingTimeout = null;
 // Utils will be available via window.LinkedInScraperUtils after utils.js loads
 const { extractProfileId, cleanProfileUrl, sleep, getRandomDelay } = window.LinkedInScraperUtils || {};
 
+// Import selectors from modular selectors
+const { 
+  resultSelectors, 
+  profileLinkSelectors, 
+  nameSelectors, 
+  headlineSelectors, 
+  locationSelectors 
+} = window.LinkedInScraperSelectors || {};
+
+// Import pagination functions from modular pagination
+const { 
+  getTotalPages, 
+  hasNextPage, 
+  ensureNextButtonReady, 
+  getCurrentPage, 
+  navigateToNextPage 
+} = window.LinkedInScraperPagination || {};
+
 // Detect if we're on a valid people search page
 function isValidPeopleSearchPage() {
   return (
@@ -19,167 +37,17 @@ function isValidPeopleSearchPage() {
   );
 }
 
-// Extract total page count from pagination
-function getTotalPages() {
-  try {
-    // Updated selector for current LinkedIn structure
-    const paginationSelectors = [
-      "div.artdeco-pagination__page-state", // Current structure: "Page 2 of 6"
-      ".artdeco-pagination__pages li:last-child button",
-      ".artdeco-pagination__indicator--number:last-child",
-    ];
-
-    for (const selector of paginationSelectors) {
-      const element = document.querySelector(selector);
-      if (element) {
-        const text = element.textContent.trim();
-        console.log(`Pagination text found: "${text}"`);
-
-        // Try "Page X of Y" format (current LinkedIn structure)
-        const pageMatch = text.match(/Page\s+(\d+)\s+of\s+(\d+)/i);
-        if (pageMatch) {
-          console.log(`Total pages detected: ${pageMatch[2]}`);
-          return parseInt(pageMatch[2]);
-        }
-
-        // Try pure number format (last page button)
-        const numberMatch = text.match(/^(\d+)$/);
-        if (numberMatch) {
-          return parseInt(numberMatch[1]);
-        }
-      }
-    }
-
-    // Fallback: count pagination buttons
-    const pageButtons = document.querySelectorAll(
-      ".artdeco-pagination__indicator--number"
-    );
-    if (pageButtons.length > 0) {
-      const lastButton = pageButtons[pageButtons.length - 1];
-      const pageNum = parseInt(lastButton.textContent.trim());
-      if (!isNaN(pageNum)) {
-        return pageNum;
-      }
-    }
-
-    console.log("Could not determine total pages, defaulting to 1");
-    return 1; // Default to 1 page if we can't determine
-  } catch (error) {
-    console.error("Error getting total pages:", error);
-    return 1;
-  }
-}
-
-// Check if a clickable "Next" pagination button exists and is enabled
-function hasNextPage() {
-  try {
-    // Look for span with exact text "Next" inside any button
-    const candidates = Array.from(
-      document.querySelectorAll("button span.artdeco-button__text")
-    );
-
-    for (const span of candidates) {
-      if (span.textContent.trim().toLowerCase() === "next") {
-        const btn = span.closest("button");
-        if (btn) {
-          const isDisabled =
-            btn.disabled || btn.getAttribute("aria-disabled") === "true";
-          return !isDisabled;
-        }
-      }
-    }
-
-    // Fallback: specific aria-label on the button itself
-    const nextButton = document.querySelector('button[aria-label="Next"]');
-    if (nextButton) {
-      const isDisabled =
-        nextButton.disabled ||
-        nextButton.getAttribute("aria-disabled") === "true";
-      return !isDisabled;
-    }
-
-    return false;
-  } catch (_) {
-    return false;
-  }
-}
-
-// Scroll to bottom to trigger lazy-loading and activate pagination (mainly for first page)
-async function ensureNextButtonReady(maxTries = 10) {
-  for (let i = 0; i < maxTries; i++) {
-    if (hasNextPage()) {
-      console.log(`Next button became ready after ${i} scroll attempts`);
-      return true;
-    }
-    console.log(`Scroll attempt ${i + 1} to activate pagination...`);
-    window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
-    await sleep(800);
-  }
-  const finalCheck = hasNextPage();
-  console.log(
-    `Final pagination check after scrolling: ${
-      finalCheck ? "ready" : "not ready"
-    }`
-  );
-  return finalCheck;
-}
-
-// Get current page number from URL or pagination
-function getCurrentPage() {
-  try {
-    const urlParams = new URLSearchParams(location.search);
-    const pageParam = urlParams.get("page");
-    if (pageParam) {
-      return parseInt(pageParam);
-    }
-
-    // Try to find current page from the page state element
-    const pageStateElement = document.querySelector(
-      "div.artdeco-pagination__page-state"
-    );
-    if (pageStateElement) {
-      const text = pageStateElement.textContent.trim();
-      const pageMatch = text.match(/Page\s+(\d+)\s+of\s+\d+/i);
-      if (pageMatch) {
-        return parseInt(pageMatch[1]);
-      }
-    }
-
-    // Try to find current page in pagination indicators
-    const currentPageElement = document.querySelector(
-      ".artdeco-pagination__indicator--current"
-    );
-    if (currentPageElement) {
-      const pageNum = parseInt(currentPageElement.textContent.trim());
-      if (!isNaN(pageNum)) {
-        return pageNum;
-      }
-    }
-
-    return 1; // Default to page 1
-  } catch (error) {
-    console.error("Error getting current page:", error);
-    return 1;
-  }
-}
 
 // Extract profile data from current page
 function scrapeCurrentPage() {
   try {
     const profiles = [];
 
-    // Use structural and semantic selectors that are stable across LinkedIn updates
-    // Order by specificity - most specific first to avoid picking up non-profile elements
-    const resultSelectors = [
-      "div[data-chameleon-result-urn]", // Profile data divs - get parent li elements (most reliable)
-      "main ul li", // Main search results container
-      "main div ul li", // One level deeper
-      "main div div ul li", // Two levels deeper
-      "main div div div ul li", // Three levels deeper
-      "main div div div div ul li", // Four levels deeper (based on your XPath)
-      "ul[role='list'] li", // Less specific - can pick up navigation elements
-      ".search-results-container li", // Fallback for older structure
-    ];
+    // Use modular selectors from selectors.js
+    if (!resultSelectors) {
+      console.error('Result selectors not available from selectors module');
+      return [];
+    }
 
     let searchResults = [];
     let searchResultsSelector = "";
@@ -218,13 +86,11 @@ function scrapeCurrentPage() {
 
     searchResults.forEach((result, index) => {
       try {
-        // Extract profile link using current working classes first, then fallbacks
-        const profileLinkSelectors = [
-          'a.dGCAEBVXgkGQKLntuWxHvfKkpBSICAYQaUlZpU[href*="/in/"]', // Current working class from sample data
-          'div.mb1 a[href*="/in/"]', // Profile link within mb1 container (mb1 is semantic)
-          'a[href*="/in/"]:not([href*="search"])', // Any /in/ link that's not a search link
-          'a[href*="linkedin.com/in/"]', // Absolute fallback
-        ];
+        // Use modular profile link selectors from selectors.js
+        if (!profileLinkSelectors) {
+          console.error('Profile link selectors not available from selectors module');
+          return;
+        }
 
         let profileLink = null;
         let profileName = "";
@@ -236,16 +102,11 @@ function scrapeCurrentPage() {
             if (linkElement && linkElement.href) {
               profileLink = linkElement.href; // Use this as the profile URL
 
-              // Get name from the link element - prioritize img alt, then span structure
-              const nameSelectors = [
-                "img[alt]", // HIGHEST PRIORITY: Image alt attribute (works for majority of profiles)
-                'span[dir="ltr"] > span[aria-hidden="true"]', // Exact structure: <span dir="ltr"><span aria-hidden="true">Name</span>
-                'span[dir="ltr"] span[aria-hidden="true"]', // Same but less strict
-                'span > span[aria-hidden="true"]', // Direct child fallback
-                'span span[aria-hidden="true"]', // General nested span
-                'span[aria-hidden="true"]:not(.visually-hidden)', // Exclude visually-hidden spans
-                'span[aria-hidden="true"]', // Broad fallback
-              ];
+              // Use modular name selectors from selectors.js
+              if (!nameSelectors) {
+                console.error('Name selectors not available from selectors module');
+                continue;
+              }
 
               for (const nameSelector of nameSelectors) {
                 const nameElement = linkElement.querySelector(nameSelector);
@@ -402,41 +263,27 @@ function scrapeCurrentPage() {
           }
         }
 
-        // Extract headline/title - use current working classes first, then fallbacks
-        const headlineSelectors = [
-          ".WQvDaGLgJAxxIvMgRXKtFRwauNhWHvbLmKV.t-14.t-black.t-normal", // Current working class from sample data
-          "div.mb1 .WQvDaGLgJAxxIvMgRXKtFRwauNhWHvbLmKV", // With context
-          "div.mb1 div.t-14.t-black.t-normal", // Semantic fallback
-          "div.t-14.t-black.t-normal", // Direct semantic match
-          'div[class*="t-14"][class*="t-black"][class*="t-normal"]', // Pattern matching
-          ".entity-result__primary-subtitle", // Legacy fallback
-        ];
-
+        // Extract headline using modular selectors
         let headline = "";
-        for (const selector of headlineSelectors) {
-          const headlineElement = result.querySelector(selector);
-          if (headlineElement && headlineElement.textContent.trim()) {
-            headline = headlineElement.textContent.trim();
-            break;
+        if (headlineSelectors) {
+          for (const selector of headlineSelectors) {
+            const headlineElement = result.querySelector(selector);
+            if (headlineElement && headlineElement.textContent.trim()) {
+              headline = headlineElement.textContent.trim();
+              break;
+            }
           }
         }
 
-        // Extract location - use current working classes first, then fallbacks
-        const locationSelectors = [
-          ".DtvjKFRzdrPWFAkJEOCmaeJlenAlYxLEw.t-14.t-normal", // Current working class from sample data
-          "div.mb1 .DtvjKFRzdrPWFAkJEOCmaeJlenAlYxLEw", // With context
-          "div.mb1 div.t-14.t-normal:not(.t-black)", // Semantic fallback
-          "div.t-14.t-normal:not(.t-black)", // Direct semantic match
-          'div[class*="t-14"][class*="t-normal"]:not([class*="t-black"])', // Pattern matching
-          ".entity-result__secondary-subtitle", // Legacy fallback
-        ];
-
+        // Extract location using modular selectors
         let location = "";
-        for (const selector of locationSelectors) {
-          const locationElement = result.querySelector(selector);
-          if (locationElement && locationElement.textContent.trim()) {
-            location = locationElement.textContent.trim();
-            break;
+        if (locationSelectors) {
+          for (const selector of locationSelectors) {
+            const locationElement = result.querySelector(selector);
+            if (locationElement && locationElement.textContent.trim()) {
+              location = locationElement.textContent.trim();
+              break;
+            }
           }
         }
 
@@ -525,47 +372,6 @@ async function saveProfiles(profiles) {
   }
 }
 
-// Navigate to next page
-async function navigateToNextPage() {
-  try {
-    // Check if scraping was stopped before navigation
-    if (
-      !isScrapingActive ||
-      sessionStorage.getItem("scraperStopped") === "true"
-    ) {
-      console.log("Scraping was stopped, canceling navigation");
-      return;
-    }
-
-    const nextPage = currentPage + 1;
-    const url = new URL(location.href);
-    url.searchParams.set("page", nextPage);
-
-    // Set flag to continue scraping on next page
-    sessionStorage.setItem("scraperActive", "true");
-    sessionStorage.setItem("scraperCurrentPage", nextPage.toString());
-    sessionStorage.setItem("scraperTotalPages", totalPages.toString());
-
-    console.log(`Navigating to page ${nextPage}...`);
-
-    // Add random delay before navigation
-    await sleep(getRandomDelay());
-
-    // Final check before actual navigation
-    if (
-      isScrapingActive &&
-      sessionStorage.getItem("scraperActive") === "true" &&
-      sessionStorage.getItem("scraperStopped") !== "true"
-    ) {
-      location.href = url.toString();
-    } else {
-      console.log("Scraping stopped during delay, canceling navigation");
-    }
-  } catch (error) {
-    console.error("Error navigating to next page:", error);
-    stopScraping();
-  }
-}
 
 // Start scraping process
 async function startScraping() {
@@ -611,7 +417,7 @@ async function startScraping() {
 
     // Navigate to next page if available
     if (currentPage < totalPages || hasNextPage()) {
-      await navigateToNextPage();
+      await navigateToNextPage(currentPage, totalPages, isScrapingActive);
     } else {
       // Scraping complete
       console.log("Scraping completed!");
@@ -705,7 +511,7 @@ function checkContinueScraping() {
           sessionStorage.getItem("scraperStopped") !== "true"
         ) {
           if (currentPage < totalPages || hasNextPage()) {
-            await navigateToNextPage();
+            await navigateToNextPage(currentPage, totalPages, isScrapingActive);
           } else {
             console.log("Scraping completed!");
             stopScraping();
