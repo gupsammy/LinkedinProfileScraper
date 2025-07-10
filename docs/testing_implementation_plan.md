@@ -3,6 +3,7 @@
 ## Current Status Overview
 
 ### ✅ Completed
+
 - Jest testing framework setup with Chrome extension mocking
 - GitHub Actions CI/CD pipeline configuration
 - Test structure and infrastructure
@@ -10,11 +11,13 @@
 - Unit tests for selectors.js (30 tests - **100% passing**)
 
 ### ⚠️ In Progress / Issues
+
 - Integration tests (22/37 passing - **59% success rate**)
 - Several test failures need investigation and fixes
 - Missing test coverage for some modules
 
 ### ❌ Not Started
+
 - End-to-end (E2E) tests with Puppeteer
 - Performance benchmark tests
 - Visual regression tests
@@ -25,17 +28,17 @@
 
 ### Unit Tests Status: 60/60 Passing ✅
 
-| Module | Tests | Status | Coverage Areas |
-|--------|-------|--------|---------------|
-| `utils.js` | 30 | ✅ All passing | URL parsing, delays, edge cases, error handling |
-| `selectors.js` | 30 | ✅ All passing | DOM selectors, fallback strategies, validation |
+| Module         | Tests | Status         | Coverage Areas                                  |
+| -------------- | ----- | -------------- | ----------------------------------------------- |
+| `utils.js`     | 30    | ✅ All passing | URL parsing, delays, edge cases, error handling |
+| `selectors.js` | 30    | ✅ All passing | DOM selectors, fallback strategies, validation  |
 
 ### Integration Tests Status: 22/37 Passing ⚠️
 
-| Test Suite | Passing | Total | Issues |
-|------------|---------|-------|--------|
-| Extraction Pipeline | 12 | 22 | Text cleaning, URL encoding, selector specificity |
-| Chrome Messaging | 10 | 15 | Async handling, error responses, mock setup |
+| Test Suite          | Passing | Total | Issues                                            |
+| ------------------- | ------- | ----- | ------------------------------------------------- |
+| Extraction Pipeline | 12      | 22    | Text cleaning, URL encoding, selector specificity |
+| Chrome Messaging    | 10      | 15    | Async handling, error responses, mock setup       |
 
 ## Critical Issues to Fix
 
@@ -44,25 +47,29 @@
 **Problem**: Text content isn't being properly cleaned in some scenarios
 
 **Failing Tests**:
+
 - `handles missing data gracefully with fallback values`
-- `handles special characters and international names` 
+- `handles special characters and international names`
 - `cleans and sanitizes text content`
 
 **Expected vs Actual**:
+
 ```javascript
 // Expected: "Test User"
 // Actual: "Test   User"
 
-// Expected: "maría-josé-garcía" 
+// Expected: "maría-josé-garcía"
 // Actual: "mar%C3%ADa-jos%C3%A9-garc%C3%ADa"
 ```
 
-**Root Cause**: 
+**Root Cause**:
+
 - Text cleaning function not applied consistently across extraction pipeline
 - URL encoding not handled in profile ID extraction
 - Image alt text extraction doesn't use text cleaning
 
 **Fix Required**:
+
 - Update `extractNameFromElement()` to apply `cleanText()` to image alt attributes
 - Add URL decoding to `extractProfileId()` function
 - Ensure all text extraction paths use consistent cleaning
@@ -72,21 +79,25 @@
 **Problem**: Storage API not returning proper response objects
 
 **Failing Tests**:
+
 - `saveProfiles sends data to Chrome extension background`
 - `handles storage errors gracefully`
 
 **Expected vs Actual**:
+
 ```javascript
 // Expected: { success: true, saved: 2, total: 2 }
 // Actual: undefined
 ```
 
 **Root Cause**:
+
 - Chrome API mock not returning promises correctly
 - Storage API functions not awaiting responses properly
 - Mock implementation doesn't match real Chrome API behavior
 
 **Fix Required**:
+
 - Update Chrome API mocks to return proper Promise responses
 - Fix `storageApi.js` to handle async responses correctly
 - Ensure error handling returns proper response objects
@@ -96,19 +107,23 @@
 **Problem**: Extraction logic doesn't properly prioritize specific selectors over generic ones
 
 **Failing Tests**:
+
 - `prioritizes more specific selectors over generic ones`
 
 **Expected vs Actual**:
+
 ```javascript
 // Expected: 1 profile (specific)
 // Actual: 2 profiles (specific + generic)
 ```
 
 **Root Cause**:
+
 - Extraction logic processes all matching selectors instead of stopping at first successful one
 - No priority system implemented for result selectors
 
 **Fix Required**:
+
 - Modify `extractProfilesFromPage()` to use first successful selector only
 - Implement proper selector priority system
 - Update result selection logic to avoid duplicates
@@ -118,15 +133,18 @@
 **Problem**: Message bridge tests failing due to async handling issues
 
 **Failing Tests**:
+
 - Various message handling tests with timing issues
 - Error response formatting inconsistencies
 
 **Root Cause**:
+
 - Mock Chrome API doesn't properly simulate async behavior
 - Message handler error responses not formatted consistently
 - Test setup doesn't account for async initialization
 
 **Fix Required**:
+
 - Improve Chrome API mock timing and response handling
 - Standardize error response format across all message handlers
 - Add proper async/await handling in test setup
@@ -138,13 +156,16 @@
 **Timeline**: 1-2 days
 
 **Tasks**:
+
 1. **Fix Text Cleaning Pipeline**
+
    - [ ] Update `extractNameFromElement()` to clean image alt text
    - [ ] Add URL decoding to `extractProfileId()`
    - [ ] Ensure consistent text cleaning across all extraction paths
    - [ ] Add tests for special characters and encoding
 
 2. **Fix Storage API Integration**
+
    - [ ] Update Chrome API mocks to return proper Promises
    - [ ] Fix `storageApi.js` async response handling
    - [ ] Standardize error response objects
@@ -161,7 +182,9 @@
 **Timeline**: 2-3 days
 
 **Tasks**:
+
 1. **Add Missing Unit Tests**
+
    - [ ] `extractor.js` unit tests (target: 25 tests)
    - [ ] `validator.js` unit tests (target: 20 tests)
    - [ ] `pagination.js` unit tests (target: 15 tests)
@@ -169,6 +192,7 @@
    - [ ] `storageApi.js` unit tests (target: 10 tests)
 
 2. **Background Script Tests**
+
    - [ ] IndexedDB operations testing
    - [ ] Message handling validation
    - [ ] Database health checks
@@ -185,13 +209,16 @@
 **Timeline**: 3-5 days
 
 **Tasks**:
+
 1. **End-to-End Testing**
+
    - [ ] Set up Puppeteer for browser automation
    - [ ] Create LinkedIn page interaction tests
    - [ ] Test complete scraping workflows
    - [ ] Validate cross-page navigation
 
 2. **Performance Testing**
+
    - [ ] Module loading benchmarks
    - [ ] Large dataset extraction tests
    - [ ] Memory usage profiling
@@ -218,7 +245,9 @@ if (imgElement && imgElement.alt) {
 // Fix needed
 if (imgElement && imgElement.alt) {
   const validator = window.LinkedInScraperValidator;
-  return validator ? validator.cleanText(imgElement.alt) : imgElement.alt.trim();
+  return validator
+    ? validator.cleanText(imgElement.alt)
+    : imgElement.alt.trim();
 }
 ```
 
@@ -230,14 +259,14 @@ if (imgElement && imgElement.alt) {
 ```javascript
 // Current code
 function extractProfileId(url) {
-  if (!url || typeof url !== 'string') return null;
+  if (!url || typeof url !== "string") return null;
   const match = url.match(/\/in\/([^/?]+)/);
   return match ? match[1] : null;
 }
 
 // Fix needed
 function extractProfileId(url) {
-  if (!url || typeof url !== 'string') return null;
+  if (!url || typeof url !== "string") return null;
   const match = url.match(/\/in\/([^/?]+)/);
   if (match) {
     try {
@@ -257,7 +286,7 @@ function extractProfileId(url) {
 
 ```javascript
 // Current code pattern
-chrome.runtime.sendMessage(message)
+chrome.runtime.sendMessage(message);
 
 // Fix needed pattern
 return new Promise((resolve) => {
@@ -291,41 +320,44 @@ for (const selector of resultSelectors) {
 
 ### Target Coverage by Module
 
-| Module | Current Coverage | Target Coverage | Priority |
-|--------|------------------|-----------------|----------|
-| `utils.js` | 100% | 100% | ✅ Complete |
-| `selectors.js` | 100% | 100% | ✅ Complete |
-| `extractor.js` | 0% | 85% | 🔴 High |
-| `validator.js` | 0% | 85% | 🔴 High |
-| `pagination.js` | 0% | 80% | 🟡 Medium |
-| `state.js` | 0% | 80% | 🟡 Medium |
-| `storageApi.js` | 0% | 75% | 🟡 Medium |
-| `controller.js` | 0% | 70% | 🟢 Low |
-| `messageBridge.js` | 0% | 70% | 🟢 Low |
-| `background.js` | 0% | 75% | 🟡 Medium |
+| Module             | Current Coverage | Target Coverage | Priority    |
+| ------------------ | ---------------- | --------------- | ----------- |
+| `utils.js`         | 100%             | 100%            | ✅ Complete |
+| `selectors.js`     | 100%             | 100%            | ✅ Complete |
+| `extractor.js`     | 0%               | 85%             | 🔴 High     |
+| `validator.js`     | 0%               | 85%             | 🔴 High     |
+| `pagination.js`    | 0%               | 80%             | 🟡 Medium   |
+| `state.js`         | 0%               | 80%             | 🟡 Medium   |
+| `storageApi.js`    | 0%               | 75%             | 🟡 Medium   |
+| `controller.js`    | 0%               | 70%             | 🟢 Low      |
+| `messageBridge.js` | 0%               | 70%             | 🟢 Low      |
+| `background.js`    | 0%               | 75%             | 🟡 Medium   |
 
 ### Overall Project Goals
 
 - **Unit Test Coverage**: 85% minimum
-- **Integration Test Success**: 90% minimum  
+- **Integration Test Success**: 90% minimum
 - **E2E Test Coverage**: 70% of critical user flows
 - **Performance Benchmarks**: All tests under acceptable thresholds
 
 ## Success Metrics
 
 ### Short Term (1-2 weeks)
+
 - [ ] Integration tests: 90%+ passing (currently 59%)
 - [ ] Unit test coverage: 70%+ (currently ~33%)
 - [ ] All critical functionality tested
 - [ ] CI/CD pipeline reliable
 
 ### Medium Term (1 month)
+
 - [ ] Unit test coverage: 85%+
 - [ ] Integration tests: 95%+ passing
 - [ ] E2E tests implemented for key workflows
 - [ ] Performance regression detection working
 
 ### Long Term (2-3 months)
+
 - [ ] Comprehensive test suite (200+ tests)
 - [ ] Visual regression testing implemented
 - [ ] Load testing for high-volume scenarios
@@ -334,12 +366,14 @@ for (const selector of resultSelectors) {
 ## Resource Requirements
 
 ### Development Time
+
 - **Phase 1 (Critical Fixes)**: 8-12 hours
 - **Phase 2 (Missing Tests)**: 16-24 hours
 - **Phase 3 (Advanced Features)**: 24-40 hours
 - **Total Estimated**: 48-76 hours
 
 ### Dependencies
+
 - Current Jest setup (✅ Complete)
 - Puppeteer for E2E testing (📦 Already installed)
 - Additional mock data creation
@@ -348,16 +382,40 @@ for (const selector of resultSelectors) {
 ## Risk Assessment
 
 ### High Risk
+
 - **Integration test failures**: Could indicate fundamental architectural issues
 - **Chrome API mocking**: Complex to get right, affects many tests
 
-### Medium Risk  
+### Medium Risk
+
 - **E2E test stability**: Browser automation can be flaky
 - **Performance test consistency**: System-dependent results
 
 ### Low Risk
+
 - **Unit test completion**: Straightforward implementation
 - **Visual regression**: Nice-to-have feature
+
+## Test Quality Assessment & Improvement Recommendations
+
+### Observations
+
+- Integration tests rely heavily on inline mock implementations scattered across test suites. This adds duplication and can lead to divergent behaviour between files.
+- Asynchronous behaviour of the Chrome runtime APIs is only partially simulated (most mocks are synchronous) leading to unreliable results.
+- Several tests assert only happy-path scenarios; they lack coverage of negative, boundary and error conditions for core utilities.
+- Unit tests for `utils.js` and `selectors.js` show 100 % line coverage but do not exercise branch conditions around invalid input or malformed DOM nodes.
+- Reusable test data factories are missing; sample profile JSON and DOM snippets are duplicated, increasing maintenance cost.
+- Test names currently lack a uniform “given / when / then” style, which reduces readability.
+
+### Action Items
+
+1. Centralize extension API mocks inside `tests/__mocks__/chrome.js`; expose helpers for async/sync modes.
+2. Introduce shared factories in `tests/fixtures/factories.js` for profile objects, message payloads and DOM nodes.
+3. Expand negative / edge-case scenarios for `utils.js`, `selectors.js`, and validator functions (e.g. null, undefined, malformed URLs).
+4. Add branch-coverage thresholds per file (80 %+) in Jest configuration to prevent superficial 100 % line-coverage reports.
+5. Adopt consistent naming convention (`<Function> › <condition> › <expected behaviour>`) across all tests.
+6. Integrate ESLint rules for Jest and Testing Library into CI to enforce best practices.
+7. Replace ad-hoc `setTimeout` usage with `jest.useFakeTimers()` for deterministic timing tests.
 
 ## Next Immediate Steps
 
