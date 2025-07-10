@@ -3,14 +3,14 @@
 
 // Extract profile ID from LinkedIn URL
 function extractProfileId(url) {
-  if (!url) return null;
+  if (!url || typeof url !== 'string') return null;
   const match = url.match(/\/in\/([^/?]+)/);
   return match ? match[1] : null;
 }
 
 // Clean profile URL by removing query parameters
 function cleanProfileUrl(url) {
-  if (!url) return null;
+  if (!url || typeof url !== 'string') return null;
   const cleanUrl = url.split("?")[0]; // Remove query parameters
   return cleanUrl;
 }
