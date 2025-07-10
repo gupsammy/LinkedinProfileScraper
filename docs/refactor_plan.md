@@ -153,9 +153,10 @@ _Prepared by: AI pair-programmer_
 
 ### 10.1 Pattern
 
-1. `src/lib/namespace.js` injects `window.LinkedInScraper` root object plus helper `registerModule(name, exports)`.
-2. Each module now calls `window.LinkedInScraper.registerModule('<ModuleName>', { …exports })`.
-3. **Fallback** – during transition the original globals (`window.LinkedInScraperUtils`, etc.) are still defined so old code & tests pass.
+- **Unique key per extension** – Namespace is now stored under `window.LinkedInScraper_<chrome.runtime.id>` to avoid collisions with other extensions shipping a similarly named global. We alias `window.LinkedInScraper` to this object for convenience.
+- **Automatic legacy bridging** – `registerModule()` automatically creates legacy globals (e.g. `window.LinkedInScraperUtils`) so modules no longer need to export those manually. This shrinks boilerplate; removal of the fallback blocks is scheduled for v1.0 cleanup.
+- **Idempotent bootstrap** – Re-injecting content scripts after SPA navigations merges into the existing namespace instead of clobbering it.
+- **DEBUG flag default** – `DEBUG` now defaults to `false`; enable it locally or via build flag when debugging.
 
 ### 10.2 Debug flag
 
