@@ -6,5 +6,7 @@
 /data/
 venv
 .venv
+/coverage/
+
 
 /coverage/

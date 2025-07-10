@@ -1,15 +1,14 @@
 // Unit tests for utils.js module
 // Tests profile URL parsing, sleep utilities, and random delays
 
+const { loadModule } = require('../helpers/loadModules');
+
 describe('Utils Module', () => {
   let utils;
 
   beforeEach(() => {
-    // Load the utils module
-    const fs = require('fs');
-    const utilsCode = fs.readFileSync('./src/lib/utils.js', 'utf8');
-    eval(utilsCode);
-    utils = window.LinkedInScraperUtils;
+    // Load the utils module with proper coverage tracking
+    utils = loadModule('src/lib/utils.js');
   });
 
   describe('extractProfileId', () => {

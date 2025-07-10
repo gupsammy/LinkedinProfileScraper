@@ -94,6 +94,10 @@ global.sessionStorage = {
   clear: jest.fn(),
 };
 
+// Mock window.scrollTo for JSDOM compatibility
+global.scrollTo = jest.fn();
+global.window.scrollTo = jest.fn();
+
 // Mock IndexedDB for background script tests
 const FDBFactory = require("fake-indexeddb/lib/FDBFactory");
 const FDBKeyRange = require("fake-indexeddb/lib/FDBKeyRange");
@@ -162,31 +166,33 @@ global.createMockLinkedInHTML = (profileCount = 3) => {
 // Console configuration for tests
 global.console = {
   ...console,
-  // Suppress console.log in tests unless debugging
-  log: process.env.DEBUG_TESTS ? console.log : jest.fn(),
+  // Allow console.log for debugging
+  log: console.log,
   error: console.error,
   warn: console.warn,
   info: console.info,
 };
 
-// Clean up after each test
-afterEach(() => {
-  // Clear all mocks
+// Setup before each test
+beforeEach(() => {
+  // Ensure Chrome API is always available
+  global.chrome = mockChrome;
+  
+  // Reset all mocks to fresh state
   mockChrome.runtime.sendMessage.mockClear();
   mockChrome.storage.local.set.mockClear();
   mockChrome.storage.local.get.mockClear();
   mockChrome.tabs.query.mockClear();
   mockChrome.tabs.sendMessage.mockClear();
+});
 
+// Clean up after each test
+afterEach(() => {
   // Clear DOM
   document.body.innerHTML = "";
 
-  // Reset window globals
-  Object.keys(window).forEach((key) => {
-    if (key.startsWith("LinkedInScraper")) {
-      delete window[key];
-    }
-  });
+  // Note: Not clearing LinkedInScraper window globals here
+  // because the module loader manages this properly
 });
 
 console.log(

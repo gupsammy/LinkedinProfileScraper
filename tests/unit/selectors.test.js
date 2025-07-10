@@ -1,15 +1,14 @@
 // Unit tests for selectors.js module
 // Tests DOM selector arrays and their structure
 
+const { loadModule } = require('../helpers/loadModules');
+
 describe('Selectors Module', () => {
   let selectors;
 
   beforeEach(() => {
-    // Load the selectors module
-    const fs = require('fs');
-    const selectorsCode = fs.readFileSync('./src/lib/selectors.js', 'utf8');
-    eval(selectorsCode);
-    selectors = window.LinkedInScraperSelectors;
+    // Load the selectors module with proper coverage tracking
+    selectors = loadModule('src/lib/selectors.js');
   });
 
   describe('Module Structure', () => {

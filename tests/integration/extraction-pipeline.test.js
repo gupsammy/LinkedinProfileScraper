@@ -1,24 +1,31 @@
 // Integration tests for the complete profile extraction pipeline
 // Tests the interaction between selectors, extractor, validator, and storage
 
+const { loadModules } = require("../helpers/loadModules");
+
 describe("Profile Extraction Pipeline Integration", () => {
   let utils, selectors, extractor, validator, storageApi;
 
   beforeEach(() => {
-    // Load all required modules in the correct order
-    const fs = require("fs");
+    // Load all required modules in the correct order with coverage tracking
+    const modules = loadModules([
+      "src/lib/utils.js",
+      "src/lib/selectors.js", 
+      "src/lib/extractor.js",
+      "src/lib/validator.js",
+      "src/lib/storageApi.js"
+    ]);
 
-    eval(fs.readFileSync("./src/lib/utils.js", "utf8"));
-    eval(fs.readFileSync("./src/lib/selectors.js", "utf8"));
-    eval(fs.readFileSync("./src/lib/extractor.js", "utf8"));
-    eval(fs.readFileSync("./src/lib/validator.js", "utf8"));
-    eval(fs.readFileSync("./src/lib/storageApi.js", "utf8"));
+    console.log("Loaded modules:", Object.keys(modules));
+    console.log("Window modules:", Object.keys(window).filter(k => k.startsWith('LinkedInScraper')));
 
     utils = window.LinkedInScraperUtils;
     selectors = window.LinkedInScraperSelectors;
     extractor = window.LinkedInScraperExtractor;
     validator = window.LinkedInScraperValidator;
     storageApi = window.LinkedInScraperStorageApi;
+
+    console.log("Module assignments:", {utils: !!utils, selectors: !!selectors, extractor: !!extractor, validator: !!validator, storageApi: !!storageApi});
   });
 
   describe("Complete Extraction Workflow", () => {

@@ -1,22 +1,24 @@
 // Integration tests for Chrome extension messaging system
 // Tests communication between content scripts and background script
 
+const { loadModules } = require("../helpers/loadModules");
+
 describe("Chrome Extension Messaging Integration", () => {
   let controller, messageBridge, storageApi;
 
   beforeEach(() => {
-    // Load required modules
-    const fs = require("fs");
-
-    eval(fs.readFileSync("./src/lib/utils.js", "utf8"));
-    eval(fs.readFileSync("./src/lib/selectors.js", "utf8"));
-    eval(fs.readFileSync("./src/lib/pagination.js", "utf8"));
-    eval(fs.readFileSync("./src/lib/extractor.js", "utf8"));
-    eval(fs.readFileSync("./src/lib/validator.js", "utf8"));
-    eval(fs.readFileSync("./src/lib/storageApi.js", "utf8"));
-    eval(fs.readFileSync("./src/lib/state.js", "utf8"));
-    eval(fs.readFileSync("./src/content/controller.js", "utf8"));
-    eval(fs.readFileSync("./src/content/messageBridge.js", "utf8"));
+    // Load required modules with coverage tracking
+    const modules = loadModules([
+      "src/lib/utils.js",
+      "src/lib/selectors.js",
+      "src/lib/pagination.js", 
+      "src/lib/extractor.js",
+      "src/lib/validator.js",
+      "src/lib/storageApi.js",
+      "src/lib/state.js",
+      "src/content/controller.js",
+      "src/content/messageBridge.js"
+    ]);
 
     controller = window.LinkedInScraperController;
     messageBridge = window.LinkedInScraperMessageBridge;
