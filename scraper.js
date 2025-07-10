@@ -7,26 +7,9 @@ let totalPages = 1;
 let scrapingInProgress = false;
 let continueScrapingTimeout = null;
 
-// Utility functions
-function extractProfileId(url) {
-  if (!url) return null;
-  const match = url.match(/\/in\/([^/?]+)/);
-  return match ? match[1] : null;
-}
-
-function cleanProfileUrl(url) {
-  if (!url) return null;
-  const cleanUrl = url.split("?")[0]; // Remove query parameters
-  return cleanUrl;
-}
-
-function sleep(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function getRandomDelay() {
-  return Math.floor(Math.random() * 1000) + 500; // 500-1500ms
-}
+// Import utility functions from modular utils
+// Utils will be available via window.LinkedInScraperUtils after utils.js loads
+const { extractProfileId, cleanProfileUrl, sleep, getRandomDelay } = window.LinkedInScraperUtils || {};
 
 // Detect if we're on a valid people search page
 function isValidPeopleSearchPage() {
