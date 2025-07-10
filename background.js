@@ -314,13 +314,21 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       switch (msg.type) {
         case "SAVE_PROFILES":
           console.log(`Attempting to save ${msg.data.length} profiles...`);
+
+          // Ensure database is initialized even for empty arrays
+          await db.ensureInitialization();
+
+          let count = 0;
           if (msg.data.length > 0) {
             console.log("Sample profile data:", msg.data[0]);
+            count = await db.putMany(msg.data);
+          } else {
+            console.log("Empty profile array - ensuring database is ready");
           }
-          const count = await db.putMany(msg.data);
+
           const totalCount = await db.getCount();
           console.log(
-            `Successfully saved ${count} profiles. Total in DB: ${totalCount}`
+            `Successfully processed ${count} profiles. Total in DB: ${totalCount}`
           );
           sendResponse({ success: true, saved: count, total: totalCount });
 
@@ -352,6 +360,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         case "CLEAR_DB":
           console.log("🗑️ Clearing all profiles from database...");
           try {
+            // Ensure database is ready before attempting to clear
+            await db.ensureInitialization();
             await db.clear();
             const finalCount = await db.getCount();
             console.log(
@@ -367,6 +377,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         case "GET_STATUS":
           console.log("📊 Getting database status...");
           try {
+            // Ensure database is initialized before getting status
+            await db.ensureInitialization();
             const status = await db.getCount();
             const health = await db.healthCheck();
             console.log(`📈 Current profile count: ${status}`);

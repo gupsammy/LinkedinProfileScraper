@@ -8,15 +8,15 @@ async function startScraping() {
   const extractor = window.LinkedInScraperExtractor;
   const validator = window.LinkedInScraperValidator;
   const storageApi = window.LinkedInScraperStorageApi;
-  
+
   if (!state || !pagination || !extractor || !validator || !storageApi) {
-    console.error('Required modules not available');
+    console.error("Required modules not available");
     return;
   }
 
   const { getScrapingState } = state;
   const { scrapingInProgress } = getScrapingState();
-  
+
   if (scrapingInProgress) {
     console.log("Scraping already in progress");
     return;
@@ -29,21 +29,29 @@ async function startScraping() {
 
   try {
     // Get page info
-    const { getCurrentPage, getTotalPages, ensureNextButtonReady, hasNextPage, navigateToNextPage } = pagination;
+    const {
+      getCurrentPage,
+      getTotalPages,
+      ensureNextButtonReady,
+      hasNextPage,
+      navigateToNextPage,
+    } = pagination;
     const currentPageNum = getCurrentPage();
     const totalPagesNum = getTotalPages();
 
-    console.log(`Starting scraping: Page ${currentPageNum} of ${totalPagesNum}`);
+    console.log(
+      `Starting scraping: Page ${currentPageNum} of ${totalPagesNum}`
+    );
 
     // Initialize state
     state.initializeScrapingState(currentPageNum, totalPagesNum);
 
     // Extract profiles from current page
     const extractedProfiles = extractor.extractProfilesFromPage();
-    
+
     // Validate and process profiles
     const validatedProfiles = [];
-    extractedProfiles.forEach(profileData => {
+    extractedProfiles.forEach((profileData) => {
       const validatedProfile = validator.createValidatedProfile(profileData);
       if (validatedProfile) {
         validatedProfiles.push(validatedProfile);
@@ -51,9 +59,11 @@ async function startScraping() {
     });
 
     if (validatedProfiles.length === 0) {
-      console.warn("No profiles found on current page - this might indicate selector issues");
+      console.warn(
+        "No profiles found on current page - this might indicate selector issues"
+      );
     }
-    
+
     // Always save profiles (empty or not) to ensure database initialization
     await storageApi.saveProfiles(validatedProfiles);
 
@@ -91,9 +101,16 @@ function checkContinueScraping() {
   const extractor = window.LinkedInScraperExtractor;
   const validator = window.LinkedInScraperValidator;
   const storageApi = window.LinkedInScraperStorageApi;
-  
+  const messageBridge = window.LinkedInScraperMessageBridge;
+
   if (!state || !pagination || !extractor || !validator || !storageApi) {
-    console.error('Required modules not available');
+    console.error("Required modules not available");
+    return;
+  }
+
+  // Critical: Check if scraping was stopped before proceeding
+  if (state.isScrapingStopped()) {
+    console.log("Scraping was stopped, aborting checkContinueScraping");
     return;
   }
 
@@ -103,6 +120,11 @@ function checkContinueScraping() {
 
   if (!isValidPeopleSearchPage()) {
     return;
+  }
+
+  // Reinitialize message bridge after navigation to ensure STOP messages are received
+  if (messageBridge) {
+    messageBridge.initializeMessageBridge();
   }
 
   const { currentPage, totalPages } = state.restoreStateFromSession();
@@ -120,8 +142,8 @@ function checkContinueScraping() {
       // Extract and process profiles
       const extractedProfiles = extractor.extractProfilesFromPage();
       const validatedProfiles = [];
-      
-      extractedProfiles.forEach(profileData => {
+
+      extractedProfiles.forEach((profileData) => {
         const validatedProfile = validator.createValidatedProfile(profileData);
         if (validatedProfile) {
           validatedProfiles.push(validatedProfile);
@@ -129,19 +151,23 @@ function checkContinueScraping() {
       });
 
       if (validatedProfiles.length === 0) {
-        console.warn("No profiles found on current page - this might indicate selector issues");
+        console.warn(
+          "No profiles found on current page - this might indicate selector issues"
+        );
       }
-      
+
       // Always save profiles
       await storageApi.saveProfiles(validatedProfiles);
 
       // Ensure paginator is active
-      const { ensureNextButtonReady, hasNextPage, navigateToNextPage } = pagination;
+      const { ensureNextButtonReady, hasNextPage, navigateToNextPage } =
+        pagination;
       await ensureNextButtonReady();
 
       // Check again before navigating
       if (!state.isScrapingStopped()) {
-        const { currentPage: current, totalPages: total } = state.getScrapingState();
+        const { currentPage: current, totalPages: total } =
+          state.getScrapingState();
         if (current < total || hasNextPage()) {
           await navigateToNextPage(current, total, true);
         } else {
@@ -164,7 +190,10 @@ function checkContinueScraping() {
 function isValidPeopleSearchPage() {
   return (
     location.href.includes("linkedin.com/search/results/people/") ||
-    location.href.includes("linkedin.com/search/results/people?")
+    location.href.includes("linkedin.com/search/results/people?") ||
+    location.pathname.includes("/search/results/people/") ||
+    (location.pathname.includes("/search/results/people") &&
+      location.search.length > 0)
   );
 }
 
@@ -173,7 +202,7 @@ window.LinkedInScraperController = {
   startScraping,
   stopScraping,
   checkContinueScraping,
-  isValidPeopleSearchPage
+  isValidPeopleSearchPage,
 };
 
-console.log('controller.js module loaded');
+console.log("controller.js module loaded");

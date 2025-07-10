@@ -4,6 +4,7 @@
 // Save profiles to background script
 async function saveProfiles(profiles) {
   try {
+    // Always send message to ensure database initialization, even with empty arrays
     const response = await chrome.runtime.sendMessage({
       type: "SAVE_PROFILES",
       data: profiles || [],
@@ -44,7 +45,7 @@ async function sendMessage(messageType, data = {}) {
   try {
     const response = await chrome.runtime.sendMessage({
       type: messageType,
-      ...data
+      ...data,
     });
     return response;
   } catch (error) {
@@ -57,7 +58,7 @@ async function sendMessage(messageType, data = {}) {
 window.LinkedInScraperStorageApi = {
   saveProfiles,
   notifyScrapingComplete,
-  sendMessage
+  sendMessage,
 };
 
-console.log('storageApi.js module loaded');
+console.log("storageApi.js module loaded");

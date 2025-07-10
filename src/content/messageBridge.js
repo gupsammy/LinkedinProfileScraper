@@ -4,9 +4,9 @@
 // Handle incoming Chrome runtime messages
 function handleRuntimeMessage(message, _sender, sendResponse) {
   const controller = window.LinkedInScraperController;
-  
+
   if (!controller) {
-    console.error('Controller module not available');
+    console.error("Controller module not available");
     sendResponse({ success: false, error: "Controller module not available" });
     return true;
   }
@@ -17,7 +17,7 @@ function handleRuntimeMessage(message, _sender, sendResponse) {
         controller.startScraping();
         sendResponse({ success: true });
       } catch (error) {
-        console.error('Error starting scraping:', error);
+        console.error("Error starting scraping:", error);
         sendResponse({ success: false, error: error.message });
       }
       break;
@@ -27,13 +27,13 @@ function handleRuntimeMessage(message, _sender, sendResponse) {
         controller.stopScraping();
         sendResponse({ success: true });
       } catch (error) {
-        console.error('Error stopping scraping:', error);
+        console.error("Error stopping scraping:", error);
         sendResponse({ success: false, error: error.message });
       }
       break;
 
     default:
-      console.warn('Unknown message type:', message.type);
+      console.warn("Unknown message type:", message.type);
       sendResponse({ success: false, error: "Unknown message type" });
   }
 
@@ -43,17 +43,26 @@ function handleRuntimeMessage(message, _sender, sendResponse) {
 // Initialize message listener
 function initializeMessageBridge() {
   if (chrome && chrome.runtime && chrome.runtime.onMessage) {
+    // Remove any existing listener to prevent duplicates
+    if (window.linkedInScraperMessageListener) {
+      chrome.runtime.onMessage.removeListener(
+        window.linkedInScraperMessageListener
+      );
+    }
+
+    // Store reference to the listener for later removal
+    window.linkedInScraperMessageListener = handleRuntimeMessage;
     chrome.runtime.onMessage.addListener(handleRuntimeMessage);
-    console.log('Message bridge initialized');
+    console.log("Message bridge initialized");
   } else {
-    console.error('Chrome runtime API not available');
+    console.error("Chrome runtime API not available");
   }
 }
 
 // Export functions
 window.LinkedInScraperMessageBridge = {
   handleRuntimeMessage,
-  initializeMessageBridge
+  initializeMessageBridge,
 };
 
-console.log('messageBridge.js module loaded');
+console.log("messageBridge.js module loaded");

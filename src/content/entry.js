@@ -9,10 +9,19 @@ function initializeScraperSystem() {
 
   const controller = window.LinkedInScraperController;
   const messageBridge = window.LinkedInScraperMessageBridge;
-  
+
   if (!controller) {
-    console.error('Controller module not available');
+    console.error("Controller module not available");
     return;
+  }
+
+  // Always initialize message bridge first, regardless of page type
+  // This ensures STOP messages are received even if user navigates away from valid pages
+  if (messageBridge) {
+    messageBridge.initializeMessageBridge();
+    console.log("Message bridge initialized globally");
+  } else {
+    console.error("Message bridge module not available");
   }
 
   if (!controller.isValidPeopleSearchPage()) {
@@ -25,13 +34,6 @@ function initializeScraperSystem() {
   // Test selectors immediately for debugging
   debugSelectors();
 
-  // Initialize message bridge
-  if (messageBridge) {
-    messageBridge.initializeMessageBridge();
-  } else {
-    console.error('Message bridge module not available');
-  }
-
   // Check if we should continue scraping from previous page
   controller.checkContinueScraping();
 }
@@ -40,12 +42,12 @@ function initializeScraperSystem() {
 function debugSelectors() {
   const selectors = window.LinkedInScraperSelectors;
   if (!selectors) {
-    console.error('Selectors module not available for debugging');
+    console.error("Selectors module not available for debugging");
     return;
   }
 
   const { resultSelectors } = selectors;
-  
+
   // Test multiple structural approaches
   const testSelectors = [
     "main ul li",
@@ -109,21 +111,21 @@ function debugSelectors() {
 // Check if all required modules are loaded
 function checkModuleAvailability() {
   const modules = [
-    'LinkedInScraperUtils',
-    'LinkedInScraperSelectors', 
-    'LinkedInScraperPagination',
-    'LinkedInScraperExtractor',
-    'LinkedInScraperValidator',
-    'LinkedInScraperStorageApi',
-    'LinkedInScraperState',
-    'LinkedInScraperController',
-    'LinkedInScraperMessageBridge'
+    "LinkedInScraperUtils",
+    "LinkedInScraperSelectors",
+    "LinkedInScraperPagination",
+    "LinkedInScraperExtractor",
+    "LinkedInScraperValidator",
+    "LinkedInScraperStorageApi",
+    "LinkedInScraperState",
+    "LinkedInScraperController",
+    "LinkedInScraperMessageBridge",
   ];
 
   const missingModules = [];
   const availableModules = [];
 
-  modules.forEach(moduleName => {
+  modules.forEach((moduleName) => {
     if (window[moduleName]) {
       availableModules.push(moduleName);
     } else {
@@ -131,10 +133,16 @@ function checkModuleAvailability() {
     }
   });
 
-  console.log(`✅ Available modules (${availableModules.length}):`, availableModules);
-  
+  console.log(
+    `✅ Available modules (${availableModules.length}):`,
+    availableModules
+  );
+
   if (missingModules.length > 0) {
-    console.error(`❌ Missing modules (${missingModules.length}):`, missingModules);
+    console.error(
+      `❌ Missing modules (${missingModules.length}):`,
+      missingModules
+    );
     return false;
   }
 
@@ -143,22 +151,57 @@ function checkModuleAvailability() {
 
 // Main initialization function
 function init() {
-  console.log('🚀 Initializing modular LinkedIn scraper...');
-  
+  console.log("🚀 Initializing modular LinkedIn scraper...");
+
   if (!checkModuleAvailability()) {
-    console.error('❌ Cannot initialize - missing required modules');
+    console.error("❌ Cannot initialize - missing required modules");
     return;
   }
 
-  console.log('✅ All modules loaded successfully');
+  console.log("✅ All modules loaded successfully");
   initializeScraperSystem();
+}
+
+// Listen for navigation changes to reinitialize message bridge
+function setupNavigationListener() {
+  // Listen for pushState/popState navigation (LinkedIn uses SPA routing)
+  const originalPushState = history.pushState;
+  const originalReplaceState = history.replaceState;
+
+  function handleNavigation() {
+    console.log("Navigation detected, reinitializing message bridge...");
+    setTimeout(() => {
+      const messageBridge = window.LinkedInScraperMessageBridge;
+      if (messageBridge) {
+        messageBridge.initializeMessageBridge();
+      }
+    }, 500); // Small delay to let page settle
+  }
+
+  history.pushState = function (...args) {
+    originalPushState.apply(history, args);
+    handleNavigation();
+  };
+
+  history.replaceState = function (...args) {
+    originalReplaceState.apply(history, args);
+    handleNavigation();
+  };
+
+  window.addEventListener("popstate", handleNavigation);
+
+  console.log("Navigation listener setup complete");
 }
 
 // Wait for DOM to be ready, then initialize
 if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", init);
+  document.addEventListener("DOMContentLoaded", () => {
+    init();
+    setupNavigationListener();
+  });
 } else {
   init();
+  setupNavigationListener();
 }
 
 // Export for debugging
@@ -166,7 +209,8 @@ window.LinkedInScraperEntry = {
   initializeScraperSystem,
   debugSelectors,
   checkModuleAvailability,
-  init
+  init,
+  setupNavigationListener,
 };
 
-console.log('entry.js module loaded');
+console.log("entry.js module loaded");
