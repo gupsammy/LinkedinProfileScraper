@@ -194,6 +194,11 @@ async function navigateToNextPage(currentPage, totalPages, isScrapingActive) {
     }
   } catch (error) {
     console.error("Error navigating to next page:", error);
+    // Stop scraping on navigation error like main branch
+    const state = window.LinkedInScraperState;
+    if (state) {
+      state.stopScrapingState();
+    }
   }
 }
 
