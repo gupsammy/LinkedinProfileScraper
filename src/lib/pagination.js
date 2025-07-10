@@ -6,7 +6,7 @@ function getTotalPages() {
   try {
     const { paginationSelectors } = window.LinkedInScraperSelectors || {};
     if (!paginationSelectors) {
-      console.error('Pagination selectors not available');
+      console.error("Pagination selectors not available");
       return 1;
     }
 
@@ -89,7 +89,7 @@ function hasNextPage() {
 async function ensureNextButtonReady(maxTries = 10) {
   const { sleep } = window.LinkedInScraperUtils || {};
   if (!sleep) {
-    console.error('Sleep utility not available');
+    console.error("Sleep utility not available");
     return false;
   }
 
@@ -155,7 +155,7 @@ async function navigateToNextPage(currentPage, totalPages, isScrapingActive) {
   try {
     const { sleep, getRandomDelay } = window.LinkedInScraperUtils || {};
     if (!sleep || !getRandomDelay) {
-      console.error('Utility functions not available');
+      console.error("Utility functions not available");
       return;
     }
 
@@ -203,7 +203,7 @@ window.LinkedInScraperPagination = {
   hasNextPage,
   ensureNextButtonReady,
   getCurrentPage,
-  navigateToNextPage
+  navigateToNextPage,
 };
 
-console.log('pagination.js module loaded');
+console.log("pagination.js module loaded");
