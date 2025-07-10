@@ -144,3 +144,34 @@ Each phase should be a separate git commit for easy rollback.
 ---
 
 _Prepared by: AI pair-programmer_
+
+---
+
+## 10. Consolidated Namespace (2025-07 Update)
+
+> **Motivation** – reduce global-scope pollution (nine `window.LinkedInScraper*` globals ➜ single `window.LinkedInScraper`).
+
+### 10.1 Pattern
+
+1. `src/lib/namespace.js` injects `window.LinkedInScraper` root object plus helper `registerModule(name, exports)`.
+2. Each module now calls `window.LinkedInScraper.registerModule('<ModuleName>', { …exports })`.
+3. **Fallback** – during transition the original globals (`window.LinkedInScraperUtils`, etc.) are still defined so old code & tests pass.
+
+### 10.2 Debug flag
+
+```js
+// default enabled – set to false in production build step
+window.LinkedInScraper.DEBUG = true;
+```
+
+All diagnostic `console.log` statements inside `namespace.js` and the registration helper are gated behind this flag. Set to `false` for a silent production bundle.
+
+### 10.3 Duplicate-key warning
+
+If a module tries to register a key that already exists, `registerModule` emits a `console.warn` so collisions are surfaced early.
+
+### 10.4 Cleanup timeline
+
+- **v0.9** (current): dual export strategy in place – no breaking changes.
+- **v1.0** (Q3 2025): remove legacy globals, update docs/tests accordingly.
+- **v1.1**: convert `namespace.js` to proper ES-module (`export const LinkedInScraper`) once content-scripts migrate to `type:"module"`.
