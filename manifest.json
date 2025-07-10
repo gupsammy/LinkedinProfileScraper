@@ -20,7 +20,18 @@
   "content_scripts": [
     {
       "matches": ["https://www.linkedin.com/search/results/people/*"],
-      "js": ["src/lib/utils.js", "src/lib/selectors.js", "src/lib/pagination.js", "scraper.js"],
+      "js": [
+        "src/lib/utils.js", 
+        "src/lib/selectors.js", 
+        "src/lib/pagination.js", 
+        "src/lib/extractor.js",
+        "src/lib/validator.js",
+        "src/lib/storageApi.js",
+        "src/lib/state.js",
+        "src/content/controller.js",
+        "src/content/messageBridge.js",
+        "src/content/entry.js"
+      ],
       "run_at": "document_end"
     }
   ],
