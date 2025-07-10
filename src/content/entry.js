@@ -149,17 +149,94 @@ function checkModuleAvailability() {
   return true;
 }
 
-// Main initialization function
-function init() {
-  console.log("🚀 Initializing modular LinkedIn scraper...");
+// Enhanced initialization function with robust module loading
+async function init() {
+  console.log("🚀 Initializing modular LinkedIn scraper with enhanced module loading...");
 
+  // Use enhanced module loader if available
+  const moduleLoader = window.LinkedInScraperModuleLoader;
+  
+  if (moduleLoader) {
+    console.log("📦 Using enhanced module loader...");
+    
+    const loadResult = await moduleLoader.loadModulesWithRetry();
+    
+    if (loadResult.success) {
+      if (loadResult.degraded) {
+        console.warn("⚠️ Extension running with limited functionality:", loadResult.warning);
+        console.warn("Available functionality:", loadResult.availableFunctionality);
+      } else {
+        console.log("✅ All modules loaded successfully via enhanced loader");
+      }
+      
+      // Proceed with initialization
+      initializeScraperSystem();
+      return;
+    } else {
+      console.error("❌ Enhanced module loading failed:", loadResult.error);
+      
+      if (loadResult.criticalFailure) {
+        console.error("💥 Critical modules missing, cannot proceed");
+        showCriticalFailureMessage(loadResult);
+        return;
+      }
+      
+      // Fall through to legacy check as last resort
+      console.log("🔄 Falling back to legacy module checking...");
+    }
+  } else {
+    console.warn("⚠️ Enhanced module loader not available, using legacy method");
+  }
+
+  // Legacy module checking (fallback)
   if (!checkModuleAvailability()) {
     console.error("❌ Cannot initialize - missing required modules");
     return;
   }
 
-  console.log("✅ All modules loaded successfully");
+  console.log("✅ All modules loaded successfully via legacy check");
   initializeScraperSystem();
+}
+
+// Show critical failure message to user
+function showCriticalFailureMessage(loadResult) {
+  console.error("💥 Critical module loading failure");
+  console.error("Missing critical modules:", loadResult.missingModules);
+  
+  // Try to show user-friendly message
+  if (typeof document !== 'undefined') {
+    const errorDiv = document.createElement('div');
+    errorDiv.style.cssText = `
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: #ff4757;
+      color: white;
+      padding: 20px;
+      border-radius: 8px;
+      font-family: Arial, sans-serif;
+      text-align: center;
+      z-index: 10000;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    `;
+    
+    errorDiv.innerHTML = `
+      <h3>LinkedIn Scraper - Critical Error</h3>
+      <p>The extension failed to load properly.</p>
+      <p><strong>Please refresh the page and try again.</strong></p>
+      <small>If the problem persists, try disabling and re-enabling the extension.</small>
+    `;
+    
+    document.body.appendChild(errorDiv);
+    
+    // Remove after 15 seconds
+    setTimeout(() => {
+      if (errorDiv.parentNode) {
+        errorDiv.parentNode.removeChild(errorDiv);
+      }
+    }, 15000);
+  }
 }
 
 // Listen for navigation changes to reinitialize message bridge
@@ -193,15 +270,18 @@ function setupNavigationListener() {
   console.log("Navigation listener setup complete");
 }
 
-// Wait for DOM to be ready, then initialize
+// Wait for DOM to be ready, then initialize with async support
 if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", () => {
-    init();
+  document.addEventListener("DOMContentLoaded", async () => {
+    await init();
     setupNavigationListener();
   });
 } else {
-  init();
-  setupNavigationListener();
+  // Use async IIFE to handle async init when DOM is already ready
+  (async () => {
+    await init();
+    setupNavigationListener();
+  })();
 }
 
 // Export for debugging
@@ -211,6 +291,7 @@ window.LinkedInScraperEntry = {
   checkModuleAvailability,
   init,
   setupNavigationListener,
+  showCriticalFailureMessage
 };
 
 console.log("entry.js module loaded");

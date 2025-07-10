@@ -443,6 +443,30 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           sendResponse({ success: true });
           break;
 
+        case "MODULE_LOAD_FAILURE":
+          console.error("📊 Module load failure reported from content script:");
+          console.error("URL:", msg.data.url);
+          console.error("User Agent:", msg.data.userAgent);
+          console.error("Failure Reasons:", msg.data.failureReasons);
+          console.error("Timestamp:", msg.data.timestamp);
+          
+          // Store failure information for debugging
+          const failureKey = `module_load_failure_${Date.now()}`;
+          try {
+            await chrome.storage.local.set({
+              [failureKey]: {
+                ...msg.data,
+                reportedAt: new Date().toISOString()
+              }
+            });
+            console.log("📝 Module failure logged to storage:", failureKey);
+          } catch (error) {
+            console.error("Failed to store module failure:", error);
+          }
+          
+          sendResponse({ success: true, logged: true });
+          break;
+
         default:
           sendResponse({ success: false, error: "Unknown message type" });
       }
