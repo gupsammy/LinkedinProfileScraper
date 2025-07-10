@@ -11,9 +11,9 @@ let continueScrapingTimeout = null;
 // Session storage keys
 const STORAGE_KEYS = {
   ACTIVE: "scraperActive",
-  STOPPED: "scraperStopped", 
+  STOPPED: "scraperStopped",
   CURRENT_PAGE: "scraperCurrentPage",
-  TOTAL_PAGES: "scraperTotalPages"
+  TOTAL_PAGES: "scraperTotalPages",
 };
 
 // Get current scraping state
@@ -23,17 +23,20 @@ function getScrapingState() {
     currentPage,
     totalPages,
     scrapingInProgress,
-    continueScrapingTimeout
+    continueScrapingTimeout,
   };
 }
 
 // Set scraping state
 function setScrapingState(state) {
-  if (state.isScrapingActive !== undefined) isScrapingActive = state.isScrapingActive;
+  if (state.isScrapingActive !== undefined)
+    isScrapingActive = state.isScrapingActive;
   if (state.currentPage !== undefined) currentPage = state.currentPage;
   if (state.totalPages !== undefined) totalPages = state.totalPages;
-  if (state.scrapingInProgress !== undefined) scrapingInProgress = state.scrapingInProgress;
-  if (state.continueScrapingTimeout !== undefined) continueScrapingTimeout = state.continueScrapingTimeout;
+  if (state.scrapingInProgress !== undefined)
+    scrapingInProgress = state.scrapingInProgress;
+  if (state.continueScrapingTimeout !== undefined)
+    continueScrapingTimeout = state.continueScrapingTimeout;
 }
 
 // Initialize scraping state
@@ -42,7 +45,7 @@ function initializeScrapingState(page, total) {
   scrapingInProgress = true;
   currentPage = page;
   totalPages = total;
-  
+
   // Clear any previous stop flag and set session storage
   sessionStorage.removeItem(STORAGE_KEYS.STOPPED);
   sessionStorage.setItem(STORAGE_KEYS.ACTIVE, "true");
@@ -84,14 +87,18 @@ function checkShouldContinue() {
 
 // Restore state from session storage
 function restoreStateFromSession() {
-  const restoredCurrentPage = parseInt(sessionStorage.getItem(STORAGE_KEYS.CURRENT_PAGE) || "1");
-  const restoredTotalPages = parseInt(sessionStorage.getItem(STORAGE_KEYS.TOTAL_PAGES) || "1");
-  
+  const restoredCurrentPage = parseInt(
+    sessionStorage.getItem(STORAGE_KEYS.CURRENT_PAGE) || "1"
+  );
+  const restoredTotalPages = parseInt(
+    sessionStorage.getItem(STORAGE_KEYS.TOTAL_PAGES) || "1"
+  );
+
   currentPage = restoredCurrentPage;
   totalPages = restoredTotalPages;
   isScrapingActive = true;
   scrapingInProgress = true;
-  
+
   return { currentPage, totalPages };
 }
 
@@ -103,8 +110,13 @@ function setNavigationState(nextPage, total) {
 }
 
 // Check if scraping is currently stopped
+// Important: rely only on the persisted session flag. The in-memory
+// `isScrapingActive` flag resets on page navigation, which caused a
+// false positive and aborted the multi-page workflow. By checking only
+// the dedicated STOPPED flag we accurately reflect the user's intent
+// across SPA navigations.
 function isScrapingStopped() {
-  return !isScrapingActive || sessionStorage.getItem(STORAGE_KEYS.STOPPED) === "true";
+  return sessionStorage.getItem(STORAGE_KEYS.STOPPED) === "true";
 }
 
 // Set timeout for continuing scraping
@@ -112,7 +124,7 @@ function setContinueTimeout(callback, delay = 2000) {
   if (continueScrapingTimeout) {
     clearTimeout(continueScrapingTimeout);
   }
-  
+
   continueScrapingTimeout = setTimeout(callback, delay);
 }
 
@@ -127,7 +139,7 @@ window.LinkedInScraperState = {
   setNavigationState,
   isScrapingStopped,
   setContinueTimeout,
-  STORAGE_KEYS
+  STORAGE_KEYS,
 };
 
-console.log('state.js module loaded');
+console.log("state.js module loaded");
