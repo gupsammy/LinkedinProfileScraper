@@ -261,6 +261,11 @@ controller.stopScraping();
 console.log("Stopped:", state.isScrapingStopped());
 ```
 
+## Coding Guidelines and Principles
+
+- **Guidelines for External Collaboration**:
+  - NEVER add reference to "Claude Code" or "Claude" or "Anthropic" while writing code comments or commit messages or raising an issue or PR on Github
+
 ## Last Documentation Update
 
 **Commit ID**: `6eab4dd` - Updated through recent modular refactor and regression fixes
