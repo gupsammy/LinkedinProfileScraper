@@ -99,7 +99,10 @@ class PopupController {
       if (
         !(
           currentTab.url.includes("linkedin.com/search/results/people/?") ||
-          currentTab.url.includes("linkedin.com/search/results/people?")
+          currentTab.url.includes("linkedin.com/search/results/people?") ||
+          currentTab.url.includes("/search/results/people/") ||
+          (currentTab.url.includes("/search/results/people") &&
+            currentTab.url.includes("?"))
         )
       ) {
         this.showMessage(

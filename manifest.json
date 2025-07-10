@@ -4,7 +4,7 @@
   "version": "0.2.0",
   "description": "Scrapes LinkedIn people-search results into IndexedDB and lets you export/import JSON.",
   "permissions": ["tabs", "scripting", "storage"],
-  "host_permissions": ["https://www.linkedin.com/*"],
+  "host_permissions": ["https://www.linkedin.com/*", "https://linkedin.com/*"],
   "action": {
     "default_popup": "popup/popup.html",
     "default_icon": {
@@ -19,8 +19,22 @@
   },
   "content_scripts": [
     {
-      "matches": ["https://www.linkedin.com/search/results/people/*"],
-      "js": ["scraper.js"],
+      "matches": [
+        "https://www.linkedin.com/search/results/people/*",
+        "https://linkedin.com/search/results/people/*"
+      ],
+      "js": [
+        "src/lib/utils.js",
+        "src/lib/selectors.js",
+        "src/lib/pagination.js",
+        "src/lib/extractor.js",
+        "src/lib/validator.js",
+        "src/lib/storageApi.js",
+        "src/lib/state.js",
+        "src/content/controller.js",
+        "src/content/messageBridge.js",
+        "src/content/entry.js"
+      ],
       "run_at": "document_end"
     }
   ],
