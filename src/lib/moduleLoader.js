@@ -106,15 +106,8 @@ class ModuleLoader {
     // Wait a bit longer for async module loading
     await this.sleep(500);
     
-    // Force garbage collection if available (Chrome extension context)
-    if (typeof gc === 'function') {
-      try {
-        gc();
-        console.log('🗑️ Forced garbage collection');
-      } catch (e) {
-        // gc() might not be available in all contexts
-      }
-    }
+    // Note: Removed forced garbage collection to prevent performance issues
+    // gc() can cause noticeable pauses and is not necessary for normal operation
     
     // Trigger a document event that might help with module loading
     if (typeof document !== 'undefined') {
@@ -207,6 +200,13 @@ class ModuleLoader {
   // Show user-friendly error message
   showUserErrorMessage(missingModules) {
     if (typeof document !== 'undefined') {
+      // Check if error message already exists to avoid duplicates
+      const existingError = document.getElementById('linkedin-scraper-error');
+      if (existingError) {
+        console.log('Error message already displayed, skipping duplicate');
+        return;
+      }
+
       const errorDiv = document.createElement('div');
       errorDiv.id = 'linkedin-scraper-error';
       errorDiv.style.cssText = `
@@ -219,9 +219,10 @@ class ModuleLoader {
         border-radius: 5px;
         font-family: Arial, sans-serif;
         font-size: 14px;
-        z-index: 10000;
+        z-index: 2147483647;
         max-width: 300px;
         box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        pointer-events: auto;
       `;
       
       errorDiv.innerHTML = `
@@ -232,12 +233,15 @@ class ModuleLoader {
       
       document.body.appendChild(errorDiv);
       
-      // Auto-remove after 10 seconds
-      setTimeout(() => {
+      // Store timeout reference for cleanup
+      const timeoutId = setTimeout(() => {
         if (errorDiv.parentNode) {
           errorDiv.parentNode.removeChild(errorDiv);
         }
       }, 10000);
+
+      // Store timeout reference on the element for potential cleanup
+      errorDiv._timeoutId = timeoutId;
     }
   }
 

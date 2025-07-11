@@ -205,7 +205,15 @@ function showCriticalFailureMessage(loadResult) {
   
   // Try to show user-friendly message
   if (typeof document !== 'undefined') {
+    // Check if critical error message already exists to avoid duplicates
+    const existingError = document.getElementById('linkedin-scraper-critical-error');
+    if (existingError) {
+      console.log('Critical error message already displayed, skipping duplicate');
+      return;
+    }
+
     const errorDiv = document.createElement('div');
+    errorDiv.id = 'linkedin-scraper-critical-error';
     errorDiv.style.cssText = `
       position: fixed;
       top: 50%;
@@ -217,8 +225,9 @@ function showCriticalFailureMessage(loadResult) {
       border-radius: 8px;
       font-family: Arial, sans-serif;
       text-align: center;
-      z-index: 10000;
+      z-index: 2147483647;
       box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+      pointer-events: auto;
     `;
     
     errorDiv.innerHTML = `
@@ -230,13 +239,41 @@ function showCriticalFailureMessage(loadResult) {
     
     document.body.appendChild(errorDiv);
     
-    // Remove after 15 seconds
-    setTimeout(() => {
+    // Store timeout reference for cleanup
+    const timeoutId = setTimeout(() => {
       if (errorDiv.parentNode) {
         errorDiv.parentNode.removeChild(errorDiv);
       }
     }, 15000);
+
+    // Store timeout reference on the element for potential cleanup
+    errorDiv._timeoutId = timeoutId;
   }
+}
+
+// Clean up error messages and pending timeouts
+function cleanupErrorMessages() {
+  // Clean up error messages with stored timeout IDs
+  const errorElements = [
+    document.getElementById('linkedin-scraper-error'),
+    document.getElementById('linkedin-scraper-critical-error')
+  ];
+
+  errorElements.forEach(element => {
+    if (element) {
+      // Clear stored timeout if it exists
+      if (element._timeoutId) {
+        clearTimeout(element._timeoutId);
+        console.log('Cleared timeout for error message:', element.id);
+      }
+      
+      // Remove the element
+      if (element.parentNode) {
+        element.parentNode.removeChild(element);
+        console.log('Removed error message element:', element.id);
+      }
+    }
+  });
 }
 
 // Listen for navigation changes to reinitialize message bridge
@@ -246,7 +283,11 @@ function setupNavigationListener() {
   const originalReplaceState = history.replaceState;
 
   function handleNavigation() {
-    console.log("Navigation detected, reinitializing message bridge...");
+    console.log("Navigation detected, cleaning up and reinitializing message bridge...");
+    
+    // Clean up any error messages and timeouts before navigation
+    cleanupErrorMessages();
+    
     setTimeout(() => {
       const messageBridge = window.LinkedInScraperMessageBridge;
       if (messageBridge) {
@@ -267,20 +308,36 @@ function setupNavigationListener() {
 
   window.addEventListener("popstate", handleNavigation);
 
+  // Clean up on page unload to prevent memory leaks
+  window.addEventListener("beforeunload", () => {
+    console.log("Page unloading, cleaning up error messages...");
+    cleanupErrorMessages();
+  });
+
   console.log("Navigation listener setup complete");
 }
 
 // Wait for DOM to be ready, then initialize with async support
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", async () => {
-    await init();
-    setupNavigationListener();
+    try {
+      await init();
+      setupNavigationListener();
+    } catch (error) {
+      console.error("❌ Initialization failed:", error);
+      console.error("Stack trace:", error.stack);
+    }
   });
 } else {
   // Use async IIFE to handle async init when DOM is already ready
   (async () => {
-    await init();
-    setupNavigationListener();
+    try {
+      await init();
+      setupNavigationListener();
+    } catch (error) {
+      console.error("❌ Initialization failed:", error);
+      console.error("Stack trace:", error.stack);
+    }
   })();
 }
 
@@ -291,7 +348,8 @@ window.LinkedInScraperEntry = {
   checkModuleAvailability,
   init,
   setupNavigationListener,
-  showCriticalFailureMessage
+  showCriticalFailureMessage,
+  cleanupErrorMessages
 };
 
 console.log("entry.js module loaded");
