@@ -1,0 +1,17 @@
+{
+  "root": true,
+  "env": {
+    "browser": true,
+    "es2021": true
+  },
+  "extends": ["eslint:recommended"],
+  "rules": {
+    "no-restricted-syntax": [
+      "error",
+      {
+        "selector": "Identifier[name=/^LinkedInScraper[A-Z]/]",
+        "message": "Avoid defining globals prefixed with LinkedInScraper*. Register via window.LinkedInScraper.registerModule instead."
+      }
+    ]
+  }
+}

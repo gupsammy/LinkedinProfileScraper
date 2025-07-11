@@ -25,12 +25,14 @@ function getRandomDelay() {
   return Math.floor(Math.random() * 1000) + 500; // 500-1500ms
 }
 
-// Export functions for use in other modules
-window.LinkedInScraperUtils = {
-  extractProfileId,
-  cleanProfileUrl,
-  sleep,
-  getRandomDelay
-};
+// Export functions using consolidated namespace
+if (window.LinkedInScraper && window.LinkedInScraper.registerModule) {
+  window.LinkedInScraper.registerModule("Utils", {
+    extractProfileId,
+    cleanProfileUrl,
+    sleep,
+    getRandomDelay,
+  });
+}
 
-console.log('utils.js module loaded');
+console.log("utils.js module loaded");

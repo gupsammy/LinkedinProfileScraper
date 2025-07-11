@@ -3,11 +3,12 @@
 
 // Start scraping process
 async function startScraping() {
-  const state = window.LinkedInScraperState;
-  const pagination = window.LinkedInScraperPagination;
-  const extractor = window.LinkedInScraperExtractor;
-  const validator = window.LinkedInScraperValidator;
-  const storageApi = window.LinkedInScraperStorageApi;
+  const { getNS } = window.LinkedInScraper;
+  const state = getNS("State");
+  const pagination = getNS("Pagination");
+  const extractor = getNS("Extractor");
+  const validator = getNS("Validator");
+  const storageApi = getNS("StorageApi");
 
   if (!state || !pagination || !extractor || !validator || !storageApi) {
     console.error("Required modules not available");
@@ -88,7 +89,7 @@ async function startScraping() {
 
 // Stop scraping process
 function stopScraping() {
-  const state = window.LinkedInScraperState;
+  const state = window.LinkedInScraper.getNS("State");
   if (state) {
     state.stopScrapingState();
   }
@@ -96,12 +97,13 @@ function stopScraping() {
 
 // Check if scraping should continue (after page load)
 function checkContinueScraping() {
-  const state = window.LinkedInScraperState;
-  const pagination = window.LinkedInScraperPagination;
-  const extractor = window.LinkedInScraperExtractor;
-  const validator = window.LinkedInScraperValidator;
-  const storageApi = window.LinkedInScraperStorageApi;
-  const messageBridge = window.LinkedInScraperMessageBridge;
+  const { getNS } = window.LinkedInScraper;
+  const state = getNS("State");
+  const pagination = getNS("Pagination");
+  const extractor = getNS("Extractor");
+  const validator = getNS("Validator");
+  const storageApi = getNS("StorageApi");
+  const messageBridge = getNS("MessageBridge");
 
   if (!state || !pagination || !extractor || !validator || !storageApi) {
     console.error("Required modules not available");
@@ -197,12 +199,14 @@ function isValidPeopleSearchPage() {
   );
 }
 
-// Export functions
-window.LinkedInScraperController = {
-  startScraping,
-  stopScraping,
-  checkContinueScraping,
-  isValidPeopleSearchPage,
-};
+// Export functions using consolidated namespace
+if (window.LinkedInScraper && window.LinkedInScraper.registerModule) {
+  window.LinkedInScraper.registerModule("Controller", {
+    startScraping,
+    stopScraping,
+    checkContinueScraping,
+    isValidPeopleSearchPage,
+  });
+}
 
 console.log("controller.js module loaded");

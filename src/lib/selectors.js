@@ -59,14 +59,16 @@ const paginationSelectors = [
   ".artdeco-pagination__indicator--number:last-child",
 ];
 
-// Export selectors for use in other modules
-window.LinkedInScraperSelectors = {
-  resultSelectors,
-  profileLinkSelectors,
-  nameSelectors,
-  headlineSelectors,
-  locationSelectors,
-  paginationSelectors
-};
+// Export selectors using consolidated namespace
+if (window.LinkedInScraper && window.LinkedInScraper.registerModule) {
+  window.LinkedInScraper.registerModule("Selectors", {
+    resultSelectors,
+    profileLinkSelectors,
+    nameSelectors,
+    headlineSelectors,
+    locationSelectors,
+    paginationSelectors,
+  });
+}
 
-console.log('selectors.js module loaded');
+console.log("selectors.js module loaded");

@@ -144,3 +144,35 @@ Each phase should be a separate git commit for easy rollback.
 ---
 
 _Prepared by: AI pair-programmer_
+
+---
+
+## 10. Consolidated Namespace (2025-07 Update)
+
+> **Motivation** – reduce global-scope pollution (nine `window.LinkedInScraper*` globals ➜ single `window.LinkedInScraper`).
+
+### 10.1 Pattern
+
+- **Unique key per extension** – Namespace is now stored under `window.LinkedInScraper_<chrome.runtime.id>` to avoid collisions with other extensions shipping a similarly named global. We alias `window.LinkedInScraper` to this object for convenience.
+- **Automatic legacy bridging** – `registerModule()` automatically creates legacy globals (e.g. `window.LinkedInScraperUtils`) so modules no longer need to export those manually. This shrinks boilerplate; removal of the fallback blocks is scheduled for v1.0 cleanup.
+- **Idempotent bootstrap** – Re-injecting content scripts after SPA navigations merges into the existing namespace instead of clobbering it.
+- **DEBUG flag default** – `DEBUG` now defaults to `false`; enable it locally or via build flag when debugging.
+
+### 10.2 Debug flag
+
+```js
+// default enabled – set to false in production build step
+window.LinkedInScraper.DEBUG = true;
+```
+
+All diagnostic `console.log` statements inside `namespace.js` and the registration helper are gated behind this flag. Set to `false` for a silent production bundle.
+
+### 10.3 Duplicate-key warning
+
+If a module tries to register a key that already exists, `registerModule` emits a `console.warn` so collisions are surfaced early.
+
+### 10.4 Cleanup timeline
+
+- **v0.9** (current): dual export strategy in place – no breaking changes.
+- **v1.0** (Q3 2025): remove legacy globals, update docs/tests accordingly.
+- **v1.1**: convert `namespace.js` to proper ES-module (`export const LinkedInScraper`) once content-scripts migrate to `type:"module"`.
