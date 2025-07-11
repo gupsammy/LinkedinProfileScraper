@@ -25,6 +25,7 @@
       ],
       "js": [
         "src/lib/namespace.js",
+        "src/lib/moduleChecker.js",
         "src/lib/utils.js",
         "src/lib/selectors.js",
         "src/lib/pagination.js",

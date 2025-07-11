@@ -109,101 +109,43 @@ function debugSelectors() {
   }
 }
 
-// Check if all required modules are loaded
-function checkModuleAvailability() {
-  // Check for consolidated namespace first
-  if (window.LinkedInScraper) {
-    const requiredModules = [
-      "Utils",
-      "Selectors",
-      "Pagination",
-      "Extractor",
-      "Validator",
-      "StorageApi",
-      "State",
-      "Controller",
-      "MessageBridge",
-    ];
+// Simple initialization function with elegant module checking
+async function init() {
+  console.log("🚀 Initializing LinkedIn scraper...");
 
-    const missingModules = [];
-    const availableModules = [];
+  // Give modules a brief moment to settle after page load
+  await new Promise((resolve) => setTimeout(resolve, 100));
 
-    requiredModules.forEach((moduleName) => {
-      if (
-        window.LinkedInScraper[moduleName] &&
-        Object.keys(window.LinkedInScraper[moduleName]).length > 0
-      ) {
-        availableModules.push(`LinkedInScraper.${moduleName}`);
-      } else {
-        missingModules.push(`LinkedInScraper.${moduleName}`);
-      }
-    });
+  // Use the simple module checker
+  const moduleChecker = window.LinkedInScraperModuleChecker;
 
-    console.log(
-      `✅ Consolidated namespace modules (${availableModules.length}):`,
-      availableModules
-    );
-
-    if (missingModules.length > 0) {
-      console.warn(
-        `⚠️ Missing consolidated modules (${missingModules.length}):`,
-        missingModules
-      );
-    }
-
-    return missingModules.length === 0;
-  }
-
-  // Fallback to legacy individual modules check
-  const modules = [
-    "LinkedInScraperUtils",
-    "LinkedInScraperSelectors",
-    "LinkedInScraperPagination",
-    "LinkedInScraperExtractor",
-    "LinkedInScraperValidator",
-    "LinkedInScraperStorageApi",
-    "LinkedInScraperState",
-    "LinkedInScraperController",
-    "LinkedInScraperMessageBridge",
-  ];
-
-  const missingModules = [];
-  const availableModules = [];
-
-  modules.forEach((moduleName) => {
-    if (window[moduleName]) {
-      availableModules.push(moduleName);
-    } else {
-      missingModules.push(moduleName);
-    }
-  });
-
-  console.log(
-    `✅ Legacy modules (${availableModules.length}):`,
-    availableModules
-  );
-
-  if (missingModules.length > 0) {
+  if (!moduleChecker) {
     console.error(
-      `❌ Missing legacy modules (${missingModules.length}):`,
-      missingModules
+      "❌ Module checker not available - this indicates a critical loading failure"
     );
-    return false;
-  }
-
-  return true;
-}
-
-// Main initialization function
-function init() {
-  console.log("🚀 Initializing modular LinkedIn scraper...");
-
-  if (!checkModuleAvailability()) {
-    console.error("❌ Cannot initialize - missing required modules");
+    alert("LinkedIn Scraper failed to load. Please refresh the page.");
     return;
   }
 
-  console.log("✅ All modules loaded successfully");
+  // Check critical modules
+  if (!moduleChecker.ensureModulesLoaded()) {
+    console.error("❌ Critical module check failed - cannot proceed");
+    return;
+  }
+
+  // Check optional modules and warn if any are missing
+  const allOptionalLoaded = moduleChecker.checkOptionalModules();
+  if (!allOptionalLoaded) {
+    console.warn(
+      "⚠️ Some optional modules missing - extension will have reduced functionality"
+    );
+  }
+
+  console.log(
+    "✅ Module verification complete - proceeding with initialization"
+  );
+
+  // Proceed with normal initialization
   initializeScraperSystem();
 }
 
@@ -238,15 +180,31 @@ function setupNavigationListener() {
   console.log("Navigation listener setup complete");
 }
 
+async function start() {
+  try {
+    await init();
+    setupNavigationListener();
+  } catch (error) {
+    console.error("❌ Initialization failed:", error);
+    console.error("Stack trace:", error.stack);
+
+    // Simple error handling - offer to reload
+    const reload = confirm(
+      "LinkedIn Scraper encountered an unexpected error during initialization.\n\n" +
+        "Click OK to refresh the page and try again."
+    );
+
+    if (reload) {
+      location.reload();
+    }
+  }
+}
+
 // Wait for DOM to be ready, then initialize
 if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", () => {
-    init();
-    setupNavigationListener();
-  });
+  document.addEventListener("DOMContentLoaded", start);
 } else {
-  init();
-  setupNavigationListener();
+  start();
 }
 
 // Export functions using consolidated namespace
@@ -254,10 +212,17 @@ if (window.LinkedInScraper && window.LinkedInScraper.registerModule) {
   window.LinkedInScraper.registerModule("Entry", {
     initializeScraperSystem,
     debugSelectors,
-    checkModuleAvailability,
     init,
     setupNavigationListener,
   });
 }
+
+// Export for debugging (legacy support)
+window.LinkedInScraperEntry = {
+  initializeScraperSystem,
+  debugSelectors,
+  init,
+  setupNavigationListener,
+};
 
 console.log("entry.js module loaded");
