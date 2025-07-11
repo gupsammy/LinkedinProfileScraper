@@ -307,32 +307,7 @@ chrome.runtime.onInstalled.addListener(async (details) => {
   }
 });
 
-const MAX_FAILURE_LOGS = 50;
-const FAILURE_LOG_PREFIX = "module_load_failure_";
-
-async function pruneFailureLogs() {
-  try {
-    const allItems = await chrome.storage.local.get(null);
-    const failureKeys = Object.keys(allItems).filter((key) =>
-      key.startsWith(FAILURE_LOG_PREFIX)
-    );
-
-    if (failureKeys.length > MAX_FAILURE_LOGS) {
-      console.log(
-        `Pruning module failure logs. Found ${failureKeys.length}, keeping ${MAX_FAILURE_LOGS}.`
-      );
-      failureKeys.sort(); // Sorts by timestamp in key name
-      const keysToRemove = failureKeys.slice(
-        0,
-        failureKeys.length - MAX_FAILURE_LOGS
-      );
-      await chrome.storage.local.remove(keysToRemove);
-      console.log(`Removed ${keysToRemove.length} old failure logs.`);
-    }
-  } catch (error) {
-    console.error("Error pruning failure logs:", error);
-  }
-}
+// Removed complex failure logging system - keeping it simple
 
 // Message handler
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
@@ -470,32 +445,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           sendResponse({ success: true });
           break;
 
-        case "MODULE_LOAD_FAILURE":
-          console.error("📊 Module load failure reported from content script:");
-          console.error("URL:", msg.data.url);
-          console.error("User Agent:", msg.data.userAgent);
-          console.error("Failure Reasons:", msg.data.failureReasons);
-          console.error("Timestamp:", msg.data.timestamp);
-
-          // Store failure information for debugging
-          const failureKey = `${FAILURE_LOG_PREFIX}${Date.now()}`;
-          try {
-            await chrome.storage.local.set({
-              [failureKey]: {
-                ...msg.data,
-                reportedAt: new Date().toISOString(),
-              },
-            });
-            console.log("📝 Module failure logged to storage:", failureKey);
-
-            // Prune old logs after adding a new one
-            await pruneFailureLogs();
-          } catch (error) {
-            console.error("Failed to store module failure:", error);
-          }
-
-          sendResponse({ success: true, logged: true });
-          break;
+        // Removed complex MODULE_LOAD_FAILURE handling - simplified error handling in content script
 
         default:
           sendResponse({ success: false, error: "Unknown message type" });
