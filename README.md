@@ -243,6 +243,8 @@ linkedin-profile-scraper/
 2. Make your modifications
 3. Load the unpacked extension in Chrome
 4. Test on LinkedIn people search pages
+5. **Ensure `src/lib/namespace.js` remains the _first_ entry in the `content_scripts[0].js` array inside `manifest.json`.**
+   The consolidated namespace must be injected before any other module that relies on it.
 
 ### Key Components
 

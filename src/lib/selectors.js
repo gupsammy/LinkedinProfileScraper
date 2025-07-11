@@ -61,24 +61,14 @@ const paginationSelectors = [
 
 // Export selectors using consolidated namespace
 if (window.LinkedInScraper && window.LinkedInScraper.registerModule) {
-  window.LinkedInScraper.registerModule('Selectors', {
+  window.LinkedInScraper.registerModule("Selectors", {
     resultSelectors,
     profileLinkSelectors,
     nameSelectors,
     headlineSelectors,
     locationSelectors,
-    paginationSelectors
+    paginationSelectors,
   });
-} else {
-  // Fallback for backward compatibility during transition
-  window.LinkedInScraperSelectors = {
-    resultSelectors,
-    profileLinkSelectors,
-    nameSelectors,
-    headlineSelectors,
-    locationSelectors,
-    paginationSelectors
-  };
 }
 
-console.log('selectors.js module loaded');
+console.log("selectors.js module loaded");

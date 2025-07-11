@@ -7,11 +7,9 @@ function initializeScraperSystem() {
   console.log("Current URL:", location.href);
   console.log("Current pathname:", location.pathname);
 
-  const controller =
-    window.LinkedInScraper?.Controller || window.LinkedInScraperController;
-  const messageBridge =
-    window.LinkedInScraper?.MessageBridge ||
-    window.LinkedInScraperMessageBridge;
+  const { getNS } = window.LinkedInScraper;
+  const controller = getNS("Controller");
+  const messageBridge = getNS("MessageBridge");
 
   if (!controller) {
     console.error("Controller module not available");
@@ -43,8 +41,7 @@ function initializeScraperSystem() {
 
 // Debug selector functionality
 function debugSelectors() {
-  const selectors =
-    window.LinkedInScraper?.Selectors || window.LinkedInScraperSelectors;
+  const selectors = window.LinkedInScraper.getNS("Selectors");
   if (!selectors) {
     console.error("Selectors module not available for debugging");
     return;
@@ -219,9 +216,7 @@ function setupNavigationListener() {
   function handleNavigation() {
     console.log("Navigation detected, reinitializing message bridge...");
     setTimeout(() => {
-      const messageBridge =
-        window.LinkedInScraper?.MessageBridge ||
-        window.LinkedInScraperMessageBridge;
+      const messageBridge = window.LinkedInScraper.getNS("MessageBridge");
       if (messageBridge) {
         messageBridge.initializeMessageBridge();
       }
@@ -263,15 +258,6 @@ if (window.LinkedInScraper && window.LinkedInScraper.registerModule) {
     init,
     setupNavigationListener,
   });
-} else {
-  // Fallback for backward compatibility during transition
-  window.LinkedInScraperEntry = {
-    initializeScraperSystem,
-    debugSelectors,
-    checkModuleAvailability,
-    init,
-    setupNavigationListener,
-  };
 }
 
 console.log("entry.js module loaded");

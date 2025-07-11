@@ -3,7 +3,6 @@
   "manifest_version": 3,
   "version": "0.2.0",
   "description": "Scrapes LinkedIn people-search results into IndexedDB and lets you export/import JSON.",
-  "x_contentScriptOrder": "IMPORTANT: keep 'src/lib/namespace.js' listed first in content_scripts.js to ensure the consolidated namespace is available before other modules.",
   "permissions": ["tabs", "scripting", "storage"],
   "host_permissions": ["https://www.linkedin.com/*", "https://linkedin.com/*"],
   "action": {

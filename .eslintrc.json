@@ -6,47 +6,11 @@
   },
   "extends": ["eslint:recommended"],
   "rules": {
-    "no-restricted-globals": [
+    "no-restricted-syntax": [
       "error",
       {
-        "name": "LinkedInScraperUtils",
-        "message": "Use window.LinkedInScraper.Utils instead of defining a global."
-      },
-      {
-        "name": "LinkedInScraperSelectors",
-        "message": "Use window.LinkedInScraper.Selectors instead of defining a global."
-      },
-      {
-        "name": "LinkedInScraperPagination",
-        "message": "Use window.LinkedInScraper.Pagination instead of defining a global."
-      },
-      {
-        "name": "LinkedInScraperExtractor",
-        "message": "Use window.LinkedInScraper.Extractor instead of defining a global."
-      },
-      {
-        "name": "LinkedInScraperValidator",
-        "message": "Use window.LinkedInScraper.Validator instead of defining a global."
-      },
-      {
-        "name": "LinkedInScraperStorageApi",
-        "message": "Use window.LinkedInScraper.StorageApi instead of defining a global."
-      },
-      {
-        "name": "LinkedInScraperState",
-        "message": "Use window.LinkedInScraper.State instead of defining a global."
-      },
-      {
-        "name": "LinkedInScraperController",
-        "message": "Use window.LinkedInScraper.Controller instead of defining a global."
-      },
-      {
-        "name": "LinkedInScraperMessageBridge",
-        "message": "Use window.LinkedInScraper.MessageBridge instead of defining a global."
-      },
-      {
-        "name": "LinkedInScraperEntry",
-        "message": "Use window.LinkedInScraper.Entry instead of defining a global."
+        "selector": "Identifier[name=/^LinkedInScraper[A-Z]/]",
+        "message": "Avoid defining globals prefixed with LinkedInScraper*. Register via window.LinkedInScraper.registerModule instead."
       }
     ]
   }

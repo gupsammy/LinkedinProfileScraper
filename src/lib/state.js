@@ -130,7 +130,7 @@ function setContinueTimeout(callback, delay = 2000) {
 
 // Export functions using consolidated namespace
 if (window.LinkedInScraper && window.LinkedInScraper.registerModule) {
-  window.LinkedInScraper.registerModule('State', {
+  window.LinkedInScraper.registerModule("State", {
     getScrapingState,
     setScrapingState,
     initializeScrapingState,
@@ -140,22 +140,8 @@ if (window.LinkedInScraper && window.LinkedInScraper.registerModule) {
     setNavigationState,
     isScrapingStopped,
     setContinueTimeout,
-    STORAGE_KEYS
+    STORAGE_KEYS,
   });
-} else {
-  // Fallback for backward compatibility during transition
-  window.LinkedInScraperState = {
-    getScrapingState,
-    setScrapingState,
-    initializeScrapingState,
-    stopScrapingState,
-    checkShouldContinue,
-    restoreStateFromSession,
-    setNavigationState,
-    isScrapingStopped,
-    setContinueTimeout,
-    STORAGE_KEYS
-  };
 }
 
 console.log("state.js module loaded");

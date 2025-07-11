@@ -6,7 +6,7 @@ function extractProfilesFromPage() {
   try {
     const profiles = [];
     const { resultSelectors, profileLinkSelectors, nameSelectors } =
-      (window.LinkedInScraper?.Selectors || window.LinkedInScraperSelectors) || {};
+      window.LinkedInScraper.getNS("Selectors") || {};
 
     if (!resultSelectors) {
       console.error("Result selectors not available from selectors module");
@@ -62,7 +62,7 @@ function extractProfilesFromPage() {
 function extractSingleProfile(result, index) {
   try {
     const { profileLinkSelectors, nameSelectors } =
-      (window.LinkedInScraper?.Selectors || window.LinkedInScraperSelectors) || {};
+      window.LinkedInScraper.getNS("Selectors") || {};
 
     if (!profileLinkSelectors) {
       console.error(
@@ -247,24 +247,14 @@ function extractNameFallback(profileLink) {
 
 // Export functions using consolidated namespace
 if (window.LinkedInScraper && window.LinkedInScraper.registerModule) {
-  window.LinkedInScraper.registerModule('Extractor', {
+  window.LinkedInScraper.registerModule("Extractor", {
     extractProfilesFromPage,
     extractSingleProfile,
     extractNameFromElement,
     isValidName,
     extractNameFallback,
-    debugNameExtractionFailure
+    debugNameExtractionFailure,
   });
-} else {
-  // Fallback for backward compatibility during transition
-  window.LinkedInScraperExtractor = {
-    extractProfilesFromPage,
-    extractSingleProfile,
-    extractNameFromElement,
-    isValidName,
-    extractNameFallback,
-    debugNameExtractionFailure
-  };
 }
 
 console.log("extractor.js module loaded");

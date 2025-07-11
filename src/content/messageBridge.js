@@ -3,7 +3,7 @@
 
 // Handle incoming Chrome runtime messages
 function handleRuntimeMessage(message, _sender, sendResponse) {
-  const controller = window.LinkedInScraper?.Controller || window.LinkedInScraperController;
+  const controller = window.LinkedInScraper.getNS("Controller");
 
   if (!controller) {
     console.error("Controller module not available");
@@ -61,16 +61,10 @@ function initializeMessageBridge() {
 
 // Export functions using consolidated namespace
 if (window.LinkedInScraper && window.LinkedInScraper.registerModule) {
-  window.LinkedInScraper.registerModule('MessageBridge', {
+  window.LinkedInScraper.registerModule("MessageBridge", {
     handleRuntimeMessage,
-    initializeMessageBridge
+    initializeMessageBridge,
   });
-} else {
-  // Fallback for backward compatibility during transition
-  window.LinkedInScraperMessageBridge = {
-    handleRuntimeMessage,
-    initializeMessageBridge
-  };
 }
 
 console.log("messageBridge.js module loaded");

@@ -4,7 +4,8 @@
 // Extract total page count from pagination
 function getTotalPages() {
   try {
-    const { paginationSelectors } = (window.LinkedInScraper?.Selectors || window.LinkedInScraperSelectors) || {};
+    const { paginationSelectors } =
+      window.LinkedInScraper.getNS("Selectors") || {};
     if (!paginationSelectors) {
       console.error("Pagination selectors not available");
       return 1;
@@ -87,7 +88,7 @@ function hasNextPage() {
 
 // Scroll to bottom to trigger lazy-loading and activate pagination (mainly for first page)
 async function ensureNextButtonReady(maxTries = 10) {
-  const { sleep } = (window.LinkedInScraper?.Utils || window.LinkedInScraperUtils) || {};
+  const { sleep } = window.LinkedInScraper.getNS("Utils") || {};
   if (!sleep) {
     console.error("Sleep utility not available");
     return false;
@@ -153,7 +154,8 @@ function getCurrentPage() {
 // Navigate to next page
 async function navigateToNextPage(currentPage, totalPages, isScrapingActive) {
   try {
-    const { sleep, getRandomDelay } = (window.LinkedInScraper?.Utils || window.LinkedInScraperUtils) || {};
+    const { sleep, getRandomDelay } =
+      window.LinkedInScraper.getNS("Utils") || {};
     if (!sleep || !getRandomDelay) {
       console.error("Utility functions not available");
       return;
@@ -195,7 +197,7 @@ async function navigateToNextPage(currentPage, totalPages, isScrapingActive) {
   } catch (error) {
     console.error("Error navigating to next page:", error);
     // Stop scraping on navigation error like main branch
-    const state = window.LinkedInScraper?.State || window.LinkedInScraperState;
+    const state = window.LinkedInScraper.getNS("State");
     if (state) {
       state.stopScrapingState();
     }
@@ -204,22 +206,13 @@ async function navigateToNextPage(currentPage, totalPages, isScrapingActive) {
 
 // Export functions using consolidated namespace
 if (window.LinkedInScraper && window.LinkedInScraper.registerModule) {
-  window.LinkedInScraper.registerModule('Pagination', {
+  window.LinkedInScraper.registerModule("Pagination", {
     getTotalPages,
     hasNextPage,
     ensureNextButtonReady,
     getCurrentPage,
-    navigateToNextPage
+    navigateToNextPage,
   });
-} else {
-  // Fallback for backward compatibility during transition
-  window.LinkedInScraperPagination = {
-    getTotalPages,
-    hasNextPage,
-    ensureNextButtonReady,
-    getCurrentPage,
-    navigateToNextPage
-  };
 }
 
 console.log("pagination.js module loaded");

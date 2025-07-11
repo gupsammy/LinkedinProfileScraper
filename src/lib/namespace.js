@@ -47,6 +47,17 @@ if (typeof root.DEBUG === "undefined") {
   }
 });
 
+// Helper to safely retrieve a module namespace (consolidated preferred, legacy fallback)
+function getNS(moduleName) {
+  // Prefer consolidated namespace first; fall back to legacy global if still present
+  return root[moduleName];
+}
+
+// Expose retrieval helper exactly once so other scripts can call `window.LinkedInScraper.getNS('Utils')`
+if (!root.getNS) {
+  root.getNS = getNS;
+}
+
 // Helper function to safely register a module
 function registerModule(moduleName, moduleExports) {
   if (!root[moduleName]) {
@@ -56,9 +67,13 @@ function registerModule(moduleName, moduleExports) {
   // Warn if any keys already exist on the target module namespace
   Object.keys(moduleExports).forEach((key) => {
     if (root[moduleName][key] !== undefined) {
+      // If the new export is exactly the same reference, skip without warning to avoid noise on
+      // SPA reinjections. Otherwise, warn (or throw in DEBUG) about the collision.
+      if (root[moduleName][key] === moduleExports[key]) {
+        return; // identical – ignore
+      }
       const msg = `LinkedInScraper: duplicate export '${key}' on module '${moduleName}' – existing value will be overwritten`;
       if (root.DEBUG) {
-        // In development / debug builds, fail fast so collisions surface immediately.
         throw new Error(msg);
       }
       console.warn(msg);
@@ -66,9 +81,6 @@ function registerModule(moduleName, moduleExports) {
   });
 
   Object.assign(root[moduleName], moduleExports);
-
-  // Automatically bridge to legacy global, eg. window.LinkedInScraperUtils
-  window[`LinkedInScraper${moduleName}`] = root[moduleName];
 
   if (root.DEBUG) {
     console.log(`✅ Module ${moduleName} registered successfully`);
