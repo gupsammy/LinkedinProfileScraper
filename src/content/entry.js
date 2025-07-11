@@ -151,41 +151,51 @@ function checkModuleAvailability() {
 
 // Enhanced initialization function with robust module loading
 async function init() {
-  console.log("🚀 Initializing modular LinkedIn scraper with enhanced module loading...");
+  console.log(
+    "🚀 Initializing modular LinkedIn scraper with enhanced module loading..."
+  );
 
   // Use enhanced module loader if available
   const moduleLoader = window.LinkedInScraperModuleLoader;
-  
+
   if (moduleLoader) {
     console.log("📦 Using enhanced module loader...");
-    
+
     const loadResult = await moduleLoader.loadModulesWithRetry();
-    
+
     if (loadResult.success) {
       if (loadResult.degraded) {
-        console.warn("⚠️ Extension running with limited functionality:", loadResult.warning);
-        console.warn("Available functionality:", loadResult.availableFunctionality);
+        console.warn(
+          "⚠️ Extension running with limited functionality:",
+          loadResult.warning
+        );
+        console.warn(
+          "Available functionality:",
+          loadResult.availableFunctionality
+        );
       } else {
         console.log("✅ All modules loaded successfully via enhanced loader");
       }
-      
+
       // Proceed with initialization
       initializeScraperSystem();
       return;
     } else {
       console.error("❌ Enhanced module loading failed:", loadResult.error);
-      
+
       if (loadResult.criticalFailure) {
         console.error("💥 Critical modules missing, cannot proceed");
         showCriticalFailureMessage(loadResult);
         return;
       }
-      
+
       // Fall through to legacy check as last resort
       console.log("🔄 Falling back to legacy module checking...");
     }
   } else {
-    console.warn("⚠️ Enhanced module loader not available, using legacy method");
+    console.warn(
+      "⚠️ Enhanced module loader not available, using legacy method"
+    );
   }
 
   // Legacy module checking (fallback)
@@ -202,78 +212,26 @@ async function init() {
 function showCriticalFailureMessage(loadResult) {
   console.error("💥 Critical module loading failure");
   console.error("Missing critical modules:", loadResult.missingModules);
-  
-  // Try to show user-friendly message
-  if (typeof document !== 'undefined') {
-    // Check if critical error message already exists to avoid duplicates
-    const existingError = document.getElementById('linkedin-scraper-critical-error');
-    if (existingError) {
-      console.log('Critical error message already displayed, skipping duplicate');
-      return;
-    }
 
-    const errorDiv = document.createElement('div');
-    errorDiv.id = 'linkedin-scraper-critical-error';
-    errorDiv.style.cssText = `
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background: #ff4757;
-      color: white;
-      padding: 20px;
-      border-radius: 8px;
-      font-family: Arial, sans-serif;
-      text-align: center;
-      z-index: 2147483647;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-      pointer-events: auto;
-    `;
-    
-    errorDiv.innerHTML = `
-      <h3>LinkedIn Scraper - Critical Error</h3>
-      <p>The extension failed to load properly.</p>
-      <p><strong>Please refresh the page and try again.</strong></p>
-      <small>If the problem persists, try disabling and re-enabling the extension.</small>
-    `;
-    
-    document.body.appendChild(errorDiv);
-    
-    // Store timeout reference for cleanup
-    const timeoutId = setTimeout(() => {
-      if (errorDiv.parentNode) {
-        errorDiv.parentNode.removeChild(errorDiv);
-      }
-    }, 15000);
-
-    // Store timeout reference on the element for potential cleanup
-    errorDiv._timeoutId = timeoutId;
+  if (window.LinkedInScraperNotifier) {
+    window.LinkedInScraperNotifier.show({
+      id: "critical-module-load-error",
+      type: "modal",
+      title: "LinkedIn Scraper - Critical Error",
+      message:
+        "The extension failed to load properly.<br><strong>Please refresh the page and try again.</strong>",
+      details:
+        "If the problem persists, try disabling and re-enabling the extension.",
+      duration: 15000,
+    });
   }
 }
 
 // Clean up error messages and pending timeouts
 function cleanupErrorMessages() {
-  // Clean up error messages with stored timeout IDs
-  const errorElements = [
-    document.getElementById('linkedin-scraper-error'),
-    document.getElementById('linkedin-scraper-critical-error')
-  ];
-
-  errorElements.forEach(element => {
-    if (element) {
-      // Clear stored timeout if it exists
-      if (element._timeoutId) {
-        clearTimeout(element._timeoutId);
-        console.log('Cleared timeout for error message:', element.id);
-      }
-      
-      // Remove the element
-      if (element.parentNode) {
-        element.parentNode.removeChild(element);
-        console.log('Removed error message element:', element.id);
-      }
-    }
-  });
+  if (window.LinkedInScraperNotifier) {
+    window.LinkedInScraperNotifier.cleanupAll();
+  }
 }
 
 // Listen for navigation changes to reinitialize message bridge
@@ -283,11 +241,13 @@ function setupNavigationListener() {
   const originalReplaceState = history.replaceState;
 
   function handleNavigation() {
-    console.log("Navigation detected, cleaning up and reinitializing message bridge...");
-    
+    console.log(
+      "Navigation detected, cleaning up and reinitializing message bridge..."
+    );
+
     // Clean up any error messages and timeouts before navigation
     cleanupErrorMessages();
-    
+
     setTimeout(() => {
       const messageBridge = window.LinkedInScraperMessageBridge;
       if (messageBridge) {
@@ -317,28 +277,21 @@ function setupNavigationListener() {
   console.log("Navigation listener setup complete");
 }
 
+async function start() {
+  try {
+    await init();
+    setupNavigationListener();
+  } catch (error) {
+    console.error("❌ Initialization failed:", error);
+    console.error("Stack trace:", error.stack);
+  }
+}
+
 // Wait for DOM to be ready, then initialize with async support
 if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", async () => {
-    try {
-      await init();
-      setupNavigationListener();
-    } catch (error) {
-      console.error("❌ Initialization failed:", error);
-      console.error("Stack trace:", error.stack);
-    }
-  });
+  document.addEventListener("DOMContentLoaded", start);
 } else {
-  // Use async IIFE to handle async init when DOM is already ready
-  (async () => {
-    try {
-      await init();
-      setupNavigationListener();
-    } catch (error) {
-      console.error("❌ Initialization failed:", error);
-      console.error("Stack trace:", error.stack);
-    }
-  })();
+  start();
 }
 
 // Export for debugging
@@ -349,7 +302,7 @@ window.LinkedInScraperEntry = {
   init,
   setupNavigationListener,
   showCriticalFailureMessage,
-  cleanupErrorMessages
+  cleanupErrorMessages,
 };
 
 console.log("entry.js module loaded");

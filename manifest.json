@@ -24,6 +24,7 @@
         "https://linkedin.com/search/results/people/*"
       ],
       "js": [
+        "src/lib/notifier.js",
         "src/lib/moduleLoader.js",
         "src/lib/utils.js",
         "src/lib/selectors.js",
